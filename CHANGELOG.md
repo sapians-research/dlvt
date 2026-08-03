@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0rc2 (2026-08-02)
+
+Security and platform maintenance release; no model, API, or contract
+changes.
+
+- Drop Python 3.9 (end-of-life October 2025); supported and CI-tested range
+  is now 3.10–3.13.
+- Upgrade the locked dependency set so every Dependabot security alert is
+  resolved: Pillow 12.3.0 (transitive via matplotlib), pytest 9.1.1,
+  black 26.5.1.
+- Version metadata synchronized across pyproject, runtime, and citation
+  files by `check_version_sync.py`.
+
 This project follows semantic versioning for the public Python API. Scientific
 claims and illustrative parameters are versioned alongside the executable
 contract; a software version is not an empirical validation milestone.
@@ -34,7 +47,7 @@ release gates.
   in general.
 - Low-vitality categories require an explicit display threshold and do not
   denote a dynamical regime, diagnosis, or performance state.
-- Python support is declared for 3.9–3.12 and is exercised by the public CI
+- Python support is declared for 3.9–3.12 (superseded in 2.2.0rc2: 3.10–3.13) and is exercised by the public CI
   matrix.
 
 ### Deprecated

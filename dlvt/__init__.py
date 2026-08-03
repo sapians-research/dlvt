@@ -49,7 +49,7 @@ from .analysis import (
     classify_equilibrium, classify_regime, regime_map
 )
 
-__version__ = "2.2.0rc1"
+__version__ = "2.2.0rc2"
 __author__ = "W. Bendinelli"
 __all__ = [
     # Model
