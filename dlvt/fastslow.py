@@ -1,22 +1,22 @@
 """
 dlvt.fastslow
 =============
-Formal fast--slow (quasi-static / slow-manifold) analysis and the colored
+Quasi-static nullcline analysis and the colored
 basin portrait for the DLVT model.
 
 This module makes two of the virtual experiments requested by the methodology
 review executable:
 
-(A) **Quasi-static reduction.** Freezing the capital C (hence the complexity
+(A) **Quasi-static reduction.** Freezing enacted leadership scope C (hence experienced load
     O = O_0 + beta*C^eta), the vitality equation relaxes to its
     quasi-equilibrium V_qe(O) — the unique positive root of the nullcline
     quadratic (Eq. A11.1 / eq:vqe-quadratic in the paper):
 
         (R/Vmax)*V^2 - (R - R*eps/Vmax - delta*O^gamma)*V - R*eps = 0.
 
-    The *slow manifold* is the graph C -> V_qe(O(C)); it is exactly the
-    V-nullcline of the full 2D system, so the equilibrium of the reduced 1D
-    capital flow
+    The *quasi-static nullcline* is the graph C -> V_qe(O(C)). It is not an
+    invariant slow manifold of the full flow. Its intersection with the
+    scope nullcline is exactly the equilibrium of the reduced 1D flow
 
         dC/dt = C * ( alpha*V_qe(O(C)) / (1 + phi*O(C)) - mu )
 
@@ -36,9 +36,9 @@ rates 1/R = 0.33 against 1/mu = 5. That comparison is misleading:
 
 * Near the equilibrium, the linearized vitality relaxation rate is
   |J_VV| = R/Vmax + delta*O*^gamma*eps/(V*+eps)^2 ≈ 0.31 (NOT R = 3: the
-  logistic term relaxes at rate R/Vmax once V is away from the floor), and
-  the linearized capital rate is |J_CC| ≈ 0.10 (NOT mu = 0.2: the alpha*I
-  inflow cancels most of the depreciation on the capital nullcline). The
+  recovery term relaxes at rate R/Vmax once V is away from the floor), and
+  the linearized scope rate is |J_CC| ≈ 0.10 (NOT mu = 0.2: the alpha*I
+  inflow cancels most of the contraction on the scope nullcline). The
   measured diagonal ratio is |J_VV/J_CC| ≈ 3.0 — a factor ~3, not ~15.
 
 * Worse for a strict decomposition: the eigenvalues at the equilibrium are
@@ -48,34 +48,34 @@ rates 1/R = 0.33 against 1/mu = 5. That comparison is misleading:
   approach to (V*, C*) is an overshoot-and-return spiral, which no 1D
   (necessarily monotone) reduced flow can reproduce.
 
-Consequently the quasi-static reduction is a good description of the slow
-capital drift FAR from the equilibrium (measured max relative C-error of a
-few percent along the baseline transient from (V0, C0) = (8, 5)), and it
-DEGRADES near the equilibrium where the spiral lives. Quantify it with
+Consequently the quasi-static reduction can describe broad enacted-scope drift far
+from equilibrium, but its maximum relative C-error is about 15% on the
+baseline transient and it degrades near the spiral. Quantify it with
 :func:`reduction_error`; do not assume it. The global-stability proof
 (Appendix A10) does not rely on the reduction in any way.
 
 References
 ----------
   Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-  of the Zombie-Leader Equilibrium. Appendix A11 (fast--slow structure).
+  manuscript in preparation, Appendix A11 (quasi-static structure).
 """
 
 from typing import Dict, Optional, Tuple, Union
+import warnings
 
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
 
-from .model import complexity, dlvt_system
+from .model import coordination_load, dlvt_system
 from .analysis import find_interior_equilibria, jacobian_eigenvalues
 
 
-# ── Quasi-equilibrium and slow manifold ──────────────────────────────────────
+# ── Quasi-equilibrium and quasi-static nullcline ─────────────────────────────
 
 def v_quasi_equilibrium(O: Union[float, np.ndarray],
                         p: Dict[str, float]) -> Union[float, np.ndarray]:
-    """Closed-form quasi-equilibrium vitality V_qe(O) at frozen complexity.
+    """Closed-form quasi-equilibrium vitality V_qe(O) at frozen experienced load.
 
     Solves the V-nullcline quadratic (paper eq:vqe-quadratic)
 
@@ -92,13 +92,13 @@ def v_quasi_equilibrium(O: Union[float, np.ndarray],
     Timescale honesty: V relaxes to V_qe(O) at the linearized rate
     |dF/dV| = R/Vmax + delta*O^gamma*eps/(V_qe+eps)^2 ≈ 0.31 at baseline
     equilibrium load — about 3x (not the raw-rate 15x once claimed) faster
-    than the capital dynamics. See the module docstring and
+    than the enacted-scope dynamics. See the module docstring and
     :func:`reduction_error`.
 
     Parameters
     ----------
     O : float or ndarray
-        Frozen complexity level(s), O > 0. Vectorized: an array input
+        Frozen experienced-load level(s), O > 0. Vectorized: an array input
         returns an array of the same shape.
     p : Dict[str, float]
         Parameter dictionary with keys 'R', 'Vmax', 'delta', 'gamma', 'eps'.
@@ -127,16 +127,15 @@ def v_quasi_equilibrium(O: Union[float, np.ndarray],
     return V
 
 
-def slow_manifold(C: Union[float, np.ndarray],
-                  p: Dict[str, float]) -> Union[float, np.ndarray]:
-    """Slow manifold V = V_qe(O(C)): the V-nullcline as a graph over C.
+def quasi_static_nullcline(C: Union[float, np.ndarray],
+                           p: Dict[str, float]) -> Union[float, np.ndarray]:
+    """Return ``V_qe(O(C))``, the vitality nullcline as a graph over C.
 
-    Because the quasi-equilibrium at frozen O is by construction the
-    V-nullcline of the full system, the slow manifold is not an
-    approximation to the nullcline — it IS the nullcline. Its intersection
-    with the capital nullcline V_c(O) = mu*(1 + phi*O)/alpha is therefore
-    exactly the full interior equilibrium (V*, C*): the reduced 1D flow
-    (:func:`reduced_slow_rhs`) has zero equilibrium bias.
+    Its intersection with the scope nullcline is exactly the full interior
+    equilibrium, but the graph is generally not invariant under the full
+    two-dimensional flow. “Quasi-static nullcline” is therefore the precise
+    term; “slow manifold” would require a singular-perturbation/invariance
+    result that the baseline calibration does not supply.
 
     What IS approximate is the *dynamics* on the manifold: the reduction
     assumes V is slaved to C, which holds only to the measured ~3x rate
@@ -146,7 +145,7 @@ def slow_manifold(C: Union[float, np.ndarray],
     Parameters
     ----------
     C : float or ndarray
-        Career capital level(s), C >= 0.
+        Enacted leadership-scope level(s), C >= 0.
     p : Dict[str, float]
         Parameter dictionary.
 
@@ -155,20 +154,32 @@ def slow_manifold(C: Union[float, np.ndarray],
     float or ndarray
         V_qe(O(C)); scalar in, scalar out.
     """
-    return v_quasi_equilibrium(complexity(C, p), p)
+    return v_quasi_equilibrium(coordination_load(C, p), p)
+
+
+def slow_manifold(C: Union[float, np.ndarray],
+                  p: Dict[str, float]) -> Union[float, np.ndarray]:
+    """Deprecated alias for :func:`quasi_static_nullcline`."""
+    warnings.warn(
+        "slow_manifold() is deprecated because the graph is not invariant; "
+        "use quasi_static_nullcline().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return quasi_static_nullcline(C, p)
 
 
 # ── Reduced 1D slow flow ─────────────────────────────────────────────────────
 
 def reduced_slow_rhs(t: float, y, p: Dict[str, float]):
-    """Right-hand side of the reduced (quasi-static) 1D capital ODE.
+    """Right-hand side of the reduced (quasi-static) 1D enacted-scope ODE.
 
-    With V slaved to the slow manifold, the capital equation becomes
+    With V slaved to the quasi-static nullcline, the scope equation becomes
 
         dC/dt = alpha * C * V_qe(O(C)) / (1 + phi*O(C)) - mu*C,
 
     a scalar autonomous flow. Being one-dimensional it is necessarily
-    monotone in time — it can reproduce the slow capital drift but NOT the
+    monotone in time — it can reproduce the slow enacted-scope drift but NOT the
     overshoot-and-return spiral of the full system (complex eigenvalues
     -0.205 +/- 0.331i at baseline; the honest separation is only ~3x, see
     the module docstring), which is precisely where the reduction degrades.
@@ -188,7 +199,7 @@ def reduced_slow_rhs(t: float, y, p: Dict[str, float]):
         [dC/dt].
     """
     C = max(y[0], 0.0)
-    O = complexity(C, p)
+    O = coordination_load(C, p)
     V = v_quasi_equilibrium(O, p)
     dCdt = p['alpha'] * C * V / (1.0 + p['phi'] * O) - p['mu'] * C
     return [dCdt]
@@ -209,7 +220,7 @@ def simulate_reduced(p: Dict[str, float], C0: float, T: float = 120.0,
     p : Dict[str, float]
         Parameter dictionary.
     C0 : float
-        Initial career capital (C0 > 0 for a nontrivial trajectory).
+        Initial enacted scope (C0 > 0 for a nontrivial trajectory).
     T : float, optional
         Time horizon, default 120.
     n_eval : int, optional
@@ -222,7 +233,7 @@ def simulate_reduced(p: Dict[str, float], C0: float, T: float = 120.0,
     t : ndarray, shape (n_eval,)
         Output time grid.
     C_reduced : ndarray, shape (n_eval,)
-        Reduced capital trajectory C(t).
+        Reduced enacted-scope trajectory C(t).
     V_on_manifold : ndarray, shape (n_eval,)
         The slaved vitality V_qe(O(C(t))) along the trajectory.
     """
@@ -230,7 +241,7 @@ def simulate_reduced(p: Dict[str, float], C0: float, T: float = 120.0,
     sol = solve_ivp(reduced_slow_rhs, [0.0, T], [C0], args=(p,),
                     method='RK45', t_eval=t_eval, rtol=rtol, atol=atol)
     C_red = np.maximum(sol.y[0], 0.0)
-    V_man = slow_manifold(C_red, p)
+    V_man = quasi_static_nullcline(C_red, p)
     return sol.t, C_red, np.asarray(V_man)
 
 
@@ -251,7 +262,7 @@ def reduction_error(p: Dict[str, float], V0: float, C0: float,
     equilibria coincide exactly — both nullclines); eigen-separation
     |J_VV/J_CC| ≈ 3.0 (NOT the raw-rate 15x = (1/mu)/(1/R) once claimed);
     modes_mix True (complex pair -0.205 +/- 0.331i). Interpretation: the
-    reduction is a useful intuition-builder for the slow capital drift far
+    reduction is a useful intuition-builder for the slow enacted-scope drift far
     from equilibrium, and degrades near the equilibrium where the damped
     spiral lives — a strict fast--slow decomposition fails there.
 
@@ -263,7 +274,7 @@ def reduction_error(p: Dict[str, float], V0: float, C0: float,
         Initial vitality for the FULL system (the reduced system has no
         vitality freedom and starts on the manifold instead).
     C0 : float
-        Common initial capital for both systems (C0 > 0).
+        Common initial enacted scope for both systems (C0 > 0).
     T : float, optional
         Horizon, default 120.
     n_eval : int, optional
@@ -315,19 +326,19 @@ def reduction_error(p: Dict[str, float], V0: float, C0: float,
     # Reduced equilibrium: root of the per-capita reduced growth rate
     # g(C) = alpha*V_qe(O(C))/(1+phi*O(C)) - mu, bracketed around C*.
     def g(C: float) -> float:
-        O = complexity(C, p)
+        O = coordination_load(C, p)
         return (p['alpha'] * v_quasi_equilibrium(O, p)
                 / (1.0 + p['phi'] * O) - p['mu'])
 
     lo, hi = 0.5 * C_star, 2.0 * C_star
     C_red_star = brentq(g, lo, hi, xtol=1e-12, rtol=1e-14)
-    V_red_star = float(slow_manifold(C_red_star, p))
+    V_red_star = float(quasi_static_nullcline(C_red_star, p))
     eq_mismatch = float(max(abs(C_red_star - C_star),
                             abs(V_red_star - V_star)))
 
     # Honest local timescale diagnostics at the equilibrium.
     eigvals, _ = jacobian_eigenvalues(V_star, C_star, p)
-    O_star = complexity(C_star, p)
+    O_star = coordination_load(C_star, p)
     dOdC = p['beta'] * p['eta'] * C_star ** (p['eta'] - 1.0)
     J00 = (-p['R'] / p['Vmax']
            - p['delta'] * O_star ** p['gamma'] * p['eps']
@@ -393,7 +404,7 @@ def basin_portrait_grid(p: Dict[str, float], n_V: int = 40, n_C: int = 40,
     V_range : (float, float), optional
         Range of initial vitalities; default (0.2, Vmax).
     C_range : (float, float), optional
-        Range of initial capitals, default (0.2, 90). Must have C_min > 0
+        Range of initial enacted-scope values, default (0.2, 90). Must have C_min > 0
         for the Theorem 2c prediction to apply.
     T : float, optional
         Integration horizon, default 400.
@@ -408,7 +419,7 @@ def basin_portrait_grid(p: Dict[str, float], n_V: int = 40, n_C: int = 40,
         Keys:
 
         - ``'V0'`` : ndarray, shape (n_V,) — initial-vitality grid.
-        - ``'C0'`` : ndarray, shape (n_C,) — initial-capital grid.
+        - ``'C0'`` : ndarray, shape (n_C,) — initial-scope grid.
         - ``'T_conv'`` : ndarray, shape (n_C, n_V) — time to enter and stay
           in the band; np.inf where not converged by T. Rows index C0,
           columns index V0 (ready for ``pcolormesh(V0, C0, T_conv)``).

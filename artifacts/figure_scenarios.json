@@ -1,0 +1,125 @@
+{
+  "figure_scenario_results": {
+    "fig10_intervention_comparison": {
+      "combined": {
+        "C_final": 92.647983,
+        "V_final": 5.07944,
+        "above_display_threshold": true
+      },
+      "no_intervention": {
+        "C_final": 32.033725,
+        "V_final": 4.702529,
+        "above_display_threshold": false
+      },
+      "recovery_increase": {
+        "C_final": 37.059193,
+        "V_final": 5.07944,
+        "above_display_threshold": true
+      },
+      "scope_coupling_reduction": {
+        "C_final": 80.084312,
+        "V_final": 4.702529,
+        "above_display_threshold": false
+      }
+    },
+    "fig2_three_scenarios": {
+      "above_threshold_illustration": {
+        "C_star": 77.736431,
+        "O_star": 12.660465,
+        "V_star": 5.798139,
+        "below_display_threshold": false
+      },
+      "exogenous_scope_ramp": {
+        "C_final": 50.5,
+        "V_final": 0.367487,
+        "entered_below_display_threshold": true,
+        "remained_strictly_positive": true
+      },
+      "illustrative_baseline": {
+        "C_star": 32.033725,
+        "O_star": 9.008431,
+        "V_star": 4.702529,
+        "below_display_threshold": true
+      }
+    }
+  },
+  "figure_scenarios": {
+    "fig10_intervention_comparison": {
+      "initial_conditions": {
+        "C0": 15.0,
+        "V0": 3.0
+      },
+      "intervention_time": 20.0,
+      "scenarios": {
+        "combined": {
+          "label": "Both simultaneously",
+          "parameter_overrides": {
+            "R": 4.2,
+            "beta": 0.1
+          }
+        },
+        "no_intervention": {
+          "label": "No intervention",
+          "parameter_overrides": {}
+        },
+        "recovery_increase": {
+          "label": "Increase R by 40%",
+          "parameter_overrides": {
+            "R": 4.2
+          }
+        },
+        "scope_coupling_reduction": {
+          "label": "Reduce beta by 60%",
+          "parameter_overrides": {
+            "beta": 0.1
+          }
+        }
+      },
+      "t_end": 120.0,
+      "threshold_fraction": 0.5
+    },
+    "fig2_three_scenarios": {
+      "scenarios": {
+        "above_threshold_illustration": {
+          "dynamics": "endogenous",
+          "initial_conditions": {
+            "C0": 0.5,
+            "V0": 8.0
+          },
+          "parameter_overrides": {
+            "beta": 0.15,
+            "delta": 0.008
+          },
+          "t_end": 200.0
+        },
+        "exogenous_scope_ramp": {
+          "dynamics": "exogenous_enacted_scope",
+          "initial_conditions": {
+            "C0": 0.5,
+            "V0": 8.0
+          },
+          "parameter_overrides": {},
+          "scope_path": {
+            "intercept": 0.5,
+            "kind": "linear",
+            "slope": 0.5
+          },
+          "t_end": 100.0
+        },
+        "illustrative_baseline": {
+          "dynamics": "endogenous",
+          "initial_conditions": {
+            "C0": 0.5,
+            "V0": 8.0
+          },
+          "parameter_overrides": {},
+          "t_end": 200.0
+        }
+      },
+      "threshold_fraction": 0.5
+    }
+  },
+  "generated_by": "scripts/generate_reviewed_figures.py",
+  "schema_version": "1.0.0",
+  "scientific_status": "illustrative_not_empirically_calibrated"
+}

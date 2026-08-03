@@ -1,7 +1,7 @@
 """
 dlvt.recovery
 =============
-Parameter-recovery simulation for the DLVT model (virtual experiment B).
+Experimental deterministic parameter-recovery simulation for the DLVT model.
 
 The identifiability claims in :mod:`dlvt.nondimensional` are *structural*: the
 interior equilibrium vitality ``V*`` depends on ``(mu, alpha)`` only through the
@@ -36,8 +36,7 @@ ridge_profile()    : loss profile along the degeneracy ridge vs a single scale
 References
 ----------
   Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-  of the Zombie-Leader Equilibrium. Manuscript submitted to The Leadership
-  Quarterly.
+  manuscript in preparation.
 """
 
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -56,6 +55,8 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
                      n_waves: int = 12, wave_dt: float = 2.0,
                      obs_noise: float = 0.05, seed: int = 0,
                      sigma_V: float = 0.05,
+                     missing_rate: float = 0.0,
+                     dropout_rate: float = 0.0,
                      V0_range: Tuple[float, float] = (5.0, 9.0),
                      C0_range: Tuple[float, float] = (2.0, 10.0)
                      ) -> Dict[str, object]:
@@ -67,12 +68,14 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
     ``n_waves`` equally spaced observation times ``k*wave_dt`` (k = 0, ...,
     n_waves-1), and each sampled ``(V, C)`` is corrupted by independent
     *multiplicative lognormal* measurement noise with log-scale ``obs_noise``
-    (so observations stay positive and the noise is scale-free).
+    (so observations stay positive and the noise is scale-free). Optional
+    missing waves and monotone dropout provide a simplified observation-process
+    stress test. They are not a model of informative attrition.
 
     The choice of initial-condition ranges is *scientifically load-bearing*
     for identifiability experiments: the defaults start leaders far from the
     attractor, so the panel is transient-rich and the transient partially
-    separates ``mu`` from ``alpha`` (their joint scaling changes the capital
+    separates ``mu`` from ``alpha`` (their joint scaling changes the enacted-scope
     timescale). Passing ranges tightly around the equilibrium (e.g.
     ``V0_range=(V*-0.5, V*+0.5)``, ``C0_range=(C*-3, C*+3)``) produces an
     equilibrium-dominated panel in which only the ratio ``mu/alpha`` is
@@ -97,11 +100,18 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
     sigma_V : float, optional
         Additive process-noise amplitude on V passed to
         :func:`dlvt.stochastic.simulate_sde`, default 0.05.
+    missing_rate : float, optional
+        Probability that a post-baseline leader-wave is missing completely at
+        random, default 0. The same mask is applied to V and C.
+    dropout_rate : float, optional
+        Probability that a leader has a randomly located monotone post-baseline
+        dropout, default 0. This is a stress-test mechanism, not an ignorable-
+        attrition assumption.
     V0_range : Tuple[float, float], optional
         Uniform sampling range for initial vitality, default ``(5.0, 9.0)``
         (transient-rich panel; see Notes above).
     C0_range : Tuple[float, float], optional
-        Uniform sampling range for initial capital, default ``(2.0, 10.0)``.
+        Uniform sampling range for initial enacted scope, default ``(2.0, 10.0)``.
 
     Returns
     -------
@@ -109,18 +119,26 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
         Keys:
         - ``'t'`` : ndarray (n_waves,), the wave times
         - ``'V_obs'`` : ndarray (n_leaders, n_waves), noisy vitality
-        - ``'C_obs'`` : ndarray (n_leaders, n_waves), noisy capital
+        - ``'C_obs'`` : ndarray (n_leaders, n_waves), noisy enacted scope
         - ``'V0'``, ``'C0'`` : ndarrays (n_leaders,), initial conditions
         - ``'true_params'`` : dict, a copy of ``p``
         - ``'n_leaders'``, ``'n_waves'``, ``'wave_dt'`` : the inputs
-        - ``'obs_noise'``, ``'sigma_V'``, ``'seed'`` : the inputs
+        - ``'observed_mask'`` : bool ndarray identifying complete waves
+        - observation/process settings and seed
 
     Notes
     -----
     Deterministic given ``seed``. The wave times start at ``t = 0`` so the
     first observation is a noisy read of the (also noisy) initial state — the
-    estimator in :func:`fit_reduced` uses it as the per-leader IC.
+    estimator in :func:`fit_reduced` uses it as the per-leader IC. The first
+    wave is therefore always retained when missingness is requested.
     """
+    if not 0.0 <= missing_rate < 1.0:
+        raise ValueError("missing_rate must lie in [0, 1).")
+    if not 0.0 <= dropout_rate < 1.0:
+        raise ValueError("dropout_rate must lie in [0, 1).")
+    if n_waves < 2:
+        raise ValueError("n_waves must be at least 2.")
     rng = np.random.default_rng(seed)
     wave_times = wave_dt * np.arange(n_waves)
     T = float(wave_times[-1])
@@ -147,10 +165,20 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
         V_obs[i] = Vi * np.exp(nV)
         C_obs[i] = Ci * np.exp(nC)
 
+    observed_mask = rng.random((n_leaders, n_waves)) >= missing_rate
+    observed_mask[:, 0] = True
+    for i in range(n_leaders):
+        if rng.random() < dropout_rate:
+            dropout_wave = int(rng.integers(1, n_waves))
+            observed_mask[i, dropout_wave:] = False
+    V_obs[~observed_mask] = np.nan
+    C_obs[~observed_mask] = np.nan
+
     return {
         't': wave_times,
         'V_obs': V_obs,
         'C_obs': C_obs,
+        'observed_mask': observed_mask,
         'V0': V0,
         'C0': C0,
         'true_params': dict(p),
@@ -159,6 +187,8 @@ def synthesize_panel(p: Dict[str, float], n_leaders: int = 40,
         'wave_dt': wave_dt,
         'obs_noise': obs_noise,
         'sigma_V': sigma_V,
+        'missing_rate': missing_rate,
+        'dropout_rate': dropout_rate,
         'seed': seed,
     }
 
@@ -177,6 +207,11 @@ def _predict_panel(p: Dict[str, float], panel: Dict[str, object]
     V_obs = np.asarray(panel['V_obs'])
     C_obs = np.asarray(panel['C_obs'])
     n_leaders = V_obs.shape[0]
+
+    if not np.all(np.isfinite(V_obs[:, 0])) or not np.all(
+        np.isfinite(C_obs[:, 0])
+    ):
+        raise ValueError("Each leader must have finite V and C at the first wave.")
 
     V_pred = np.empty_like(V_obs)
     C_pred = np.empty_like(C_obs)
@@ -203,19 +238,24 @@ def _panel_residuals(p: Dict[str, float], panel: Dict[str, object]
     """Flattened, per-channel-scaled residual vector for least squares.
 
     The C channel is rescaled by ``V_scale / C_scale`` so that vitality and
-    capital contribute on comparable footing despite their different
+    enacted scope contribute on comparable footing despite their different
     magnitudes (C* ~ 32 vs V* ~ 4.7).
     """
     V_obs = np.asarray(panel['V_obs'])
     C_obs = np.asarray(panel['C_obs'])
     V_pred, C_pred = _predict_panel(p, panel)
 
-    V_scale = max(float(np.mean(V_obs)), 1e-6)
-    C_scale = max(float(np.mean(C_obs)), 1e-6)
+    V_mask = np.isfinite(V_obs)
+    C_mask = np.isfinite(C_obs)
+    if not np.any(V_mask) or not np.any(C_mask):
+        raise ValueError("The panel must contain finite V and C observations.")
+
+    V_scale = max(float(np.nanmean(V_obs)), 1e-6)
+    C_scale = max(float(np.nanmean(C_obs)), 1e-6)
 
     res_V = (V_pred - V_obs) / V_scale
     res_C = (C_pred - C_obs) / C_scale
-    return np.concatenate([res_V.ravel(), res_C.ravel()])
+    return np.concatenate([res_V[V_mask], res_C[C_mask]])
 
 
 def panel_loss(p: Dict[str, float], panel: Dict[str, object]) -> float:

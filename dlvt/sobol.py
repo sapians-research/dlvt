@@ -4,8 +4,9 @@ dlvt.sobol
 Formal variance-based (Sobol') global sensitivity analysis for the DLVT model.
 
 This module upgrades the DLVT sensitivity toolkit from the rank-correlation
-*screening* provided by :func:`dlvt.nondimensional.lhs_zombie_fraction`
-(Latin-hypercube + Spearman) to a FORMAL variance decomposition of the
+*screening* provided by the deprecated compatibility function
+:func:`dlvt.nondimensional.lhs_zombie_fraction` (Latin-hypercube + Spearman)
+to a FORMAL variance decomposition of the
 equilibrium output V* over the 11 raw model parameters.  Where the LHS screen
 reports monotone marginal association (Spearman rho), the Sobol' indices here
 apportion the *variance* of the output to each input and to its total
@@ -49,27 +50,25 @@ Model output
 The output ``f`` is the equilibrium vitality V* at the lowest-C stable interior
 equilibrium, obtained from :func:`dlvt.analysis.find_interior_equilibria` with
 its default (adaptive, beta-aware) ``C_max`` and ``n_scan=2000``.  With
-``output='regime'`` the output is instead the zombie indicator
-``1[V* < 0.5 * Vmax]``.
+``output='low_vitality'`` the output is instead the illustrative indicator
+``1[V* < 0.5 * Vmax]``. The threshold is not empirically validated.
 
-NaN policy (missing equilibria)
--------------------------------
-Not every draw in a +/-``factor`` log-uniform hypercube admits a stable
-interior equilibrium (e.g. when ``alpha*Vmax/mu <= 1 + phi*O0`` the C-nullcline
-never dips below Vmax and dC/dt < 0 everywhere — Theorem 1).  Rather than
-impute an arbitrary value (which would fabricate variance and bias every
-index), such draws are assigned ``f = NaN`` and the estimators are computed
-NaN-aware: for each index, rows with a NaN in *any* column needed by that
-index's difference are dropped, and the total variance is taken over the finite
-pooled ``f(A U B)`` values.  The overall fraction of model evaluations that
-resolved to a finite output is returned as ``retained_fraction`` and should be
-inspected before trusting the indices.
+Missing-equilibrium policy
+--------------------------
+A Sobol' decomposition is formally defined only when the model output exists
+over the entire declared input distribution.  The default policy therefore
+raises if any Saltelli evaluation lacks a stable interior equilibrium. Users
+must either narrow the input domain or define an output for boundary cases.
+An explicit ``missing_policy='conditional'`` option retains only rows
+that are complete across A, B, and every AB_i matrix; its results are labeled
+exploratory because selection changes the input distribution.
 
 Validation anchor (exact structural zeros)
 ------------------------------------------
 The interior equilibrium (V*, O*) solves a system involving neither beta, eta,
-nor O0 (see the :mod:`dlvt.nondimensional` module header and Lemma 2 /
-scope-absorption): V* is *exactly* invariant to those three parameters.
+nor O0 (see the :mod:`dlvt.nondimensional` module header and the
+scope-absorption result): V* is invariant to those three parameters while the
+same positive interior root remains admissible (in particular, ``O0 < O*``).
 Consequently their total-effect indices must be ~0 (up to Monte-Carlo noise) —
 in fact replacing column i by B leaves V* unchanged when i is beta/eta/O0, so
 ``f(A) == f(AB_i)`` and ``ST_i`` is identically 0 on every retained row.
@@ -80,7 +79,8 @@ effect.  These facts are the built-in correctness oracle for this estimator
 
 Contrast with the LHS/Spearman screen
 --------------------------------------
-:func:`dlvt.nondimensional.lhs_zombie_fraction` answers "which parameters are
+:func:`dlvt.nondimensional.lhs_zombie_fraction` is a deprecated compatibility
+wrapper that answers "which parameters are
 monotonically associated with V*"; this module answers "how is the *variance*
 of V* partitioned among the parameters and their interactions".  The two are
 complementary; only the latter is a formal variance-based decomposition.
@@ -93,16 +93,16 @@ References
     output. Design and estimator for the total sensitivity index.
     Computer Physics Communications 181(2), 259-270.
   Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-    of the Zombie-Leader Equilibrium. Manuscript submitted to The Leadership
-    Quarterly.
+    manuscript in preparation.
 """
 
 from typing import Dict, List, Optional
+import warnings
 
 import numpy as np
 from scipy.stats import qmc
 
-from .analysis import V_STRATEGIC_FRACTION, find_interior_equilibria
+from .analysis import DISPLAY_THRESHOLD_FRACTION, find_interior_equilibria
 from .model import make_params
 from .nondimensional import PARAM_NAMES
 
@@ -134,19 +134,20 @@ def _model_output(p: Dict[str, float], output: str, n_scan: int) -> float:
     """Scalar model output for one parameter draw.
 
     ``output='V_star'`` returns V* (NaN if no stable equilibrium);
-    ``output='regime'`` returns the zombie indicator 1[V* < 0.5*Vmax]
-    (NaN if no stable equilibrium — the missing draw is *not* silently
-    counted as sustainable or zombie).
+    ``output='low_vitality'`` returns 1[V* < 0.5*Vmax]
+    (NaN if no stable equilibrium — the missing draw is not silently assigned
+    a compatibility label). ``output='regime'`` is a deprecated input alias
+    for ``'low_vitality'``.
     """
     v = _v_star(p, n_scan=n_scan)
     if not np.isfinite(v):
         return float('nan')
     if output == 'V_star':
         return v
-    if output == 'regime':
-        return 1.0 if v < V_STRATEGIC_FRACTION * p['Vmax'] else 0.0
+    if output in ('low_vitality', 'regime'):
+        return 1.0 if v < DISPLAY_THRESHOLD_FRACTION * p['Vmax'] else 0.0
     raise ValueError(
-        f"unknown output={output!r}; expected 'V_star' or 'regime'."
+        f"unknown output={output!r}; expected 'V_star' or 'low_vitality'."
     )
 
 
@@ -165,9 +166,10 @@ def _row_to_params(base: Dict[str, float], unit_row: np.ndarray,
 
 # -- Sobol' indices -------------------------------------------------------------
 
-def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
+def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 1.5,
                   seed: int = 1, output: str = 'V_star',
-                  n_scan: int = 2000) -> Dict[str, object]:
+                  n_scan: int = 2000,
+                  missing_policy: str = 'raise') -> Dict[str, object]:
     """Variance-based Sobol' first-order (S1) and total-effect (ST) indices.
 
     Formal replacement for LHS+Spearman screening: this apportions the variance
@@ -183,9 +185,9 @@ def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
         ST_i = mean( ( f(A) - f(AB_i) )^2 ) / ( 2 * Var )
         S1_i = ( Var - mean( ( f(B) - f(AB_i) )^2 ) / 2 ) / Var
 
-    NaN-aware: draws with no stable interior equilibrium yield f = NaN; for each
-    index, rows carrying a NaN in a needed column are dropped (no imputation),
-    and ``retained_fraction`` reports the finite share of all evaluations.
+    Missing outputs raise by default.  With ``missing_policy='conditional'``,
+    only rows complete across A, B, and all AB_i matrices are retained and the
+    result is explicitly marked as an exploratory conditional decomposition.
 
     Validation anchor: beta, eta, O0 have EXACTLY zero effect on V* (they move
     only C*), so their ST must be ~0; V* depends on (mu, alpha) via mu/alpha and
@@ -200,15 +202,20 @@ def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
         power of two for the Sobol' net's balance properties.  Default 256.
     factor : float, optional
         Half-width of the log-uniform range; each parameter spans
-        [x_i/factor, x_i*factor].  Default 2.0.
+        [x_i/factor, x_i*factor].  Default 1.5; this is a numerical domain,
+        not an empirical plausibility claim.
     seed : int, optional
         Seed for the scrambled Sobol' sampler (deterministic).  Default 1.
     output : str, optional
-        'V_star' (equilibrium vitality) or 'regime' (zombie indicator
-        1[V* < 0.5*Vmax]).  Default 'V_star'.
+        ``'V_star'`` (equilibrium vitality) or ``'low_vitality'``
+        (illustrative indicator ``1[V* < 0.5*Vmax]``). ``'regime'`` remains
+        accepted only as a deprecated compatibility alias. Default ``'V_star'``.
     n_scan : int, optional
-        Scan resolution passed to :func:`find_interior_equilibria`.
-        Default 2000 (a fast, adequate resolution for this bounded output).
+        Deprecated compatibility argument passed to
+        :func:`find_interior_equilibria`; the monotone root solver ignores it.
+    missing_policy : {'raise', 'conditional'}, optional
+        ``'raise'`` requires a defined output at every design evaluation.
+        ``'conditional'`` performs an exploratory complete-row analysis.
 
     Returns
     -------
@@ -221,10 +228,24 @@ def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
         - 'n_base'            : int, the base sample size N used
         - 'var_total'         : float, Var over the finite pooled f(A U B)
         - 'output'            : str, the output analysed
+        - 'formal_decomposition': bool, true only with no missing outputs
+        - 'method'            : explicit interpretation label
     """
-    if output not in ('V_star', 'regime'):
+    if output not in ('V_star', 'low_vitality', 'regime'):
         raise ValueError(
-            f"unknown output={output!r}; expected 'V_star' or 'regime'."
+            f"unknown output={output!r}; expected 'V_star' or 'low_vitality'."
+        )
+    if output == 'regime':
+        warnings.warn(
+            "output='regime' is deprecated; use output='low_vitality' and "
+            "report the explicit display threshold.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        output = 'low_vitality'
+    if missing_policy not in ('raise', 'conditional'):
+        raise ValueError(
+            "missing_policy must be either 'raise' or 'conditional'."
         )
     d = len(PARAM_NAMES)
 
@@ -252,31 +273,54 @@ def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
         AB_unit[:, i] = B_unit[:, i]
         fAB[i] = _eval_matrix(AB_unit)
 
-    # -- Total variance over the finite pooled base outputs --------------------
-    pooled = np.concatenate([fA, fB])
-    pooled_finite = pooled[np.isfinite(pooled)]
-    var_total = float(np.var(pooled_finite, ddof=1)) if pooled_finite.size > 1 \
-        else float('nan')
+    all_out = np.concatenate([fA, fB, fAB.ravel()])
+    retained_fraction = float(np.mean(np.isfinite(all_out)))
+    complete_rows = (
+        np.isfinite(fA)
+        & np.isfinite(fB)
+        & np.all(np.isfinite(fAB), axis=0)
+    )
+
+    if retained_fraction < 1.0 and missing_policy == 'raise':
+        raise ValueError(
+            "Sobol output is undefined for part of the declared parameter "
+            f"domain (finite evaluation fraction={retained_fraction:.4f}). "
+            "Narrow factor/ranges, define an output for boundary cases, or use "
+            "missing_policy='conditional' for an explicitly exploratory "
+            "complete-row analysis."
+        )
+
+    if missing_policy == 'conditional':
+        fA_use = fA[complete_rows]
+        fB_use = fB[complete_rows]
+        fAB_use = fAB[:, complete_rows]
+    else:
+        fA_use = fA
+        fB_use = fB
+        fAB_use = fAB
+
+    pooled = np.concatenate([fA_use, fB_use])
+    var_total = float(np.var(pooled, ddof=1)) if pooled.size > 1 else float('nan')
 
     S1 = np.full(d, np.nan)
     ST = np.full(d, np.nan)
     if np.isfinite(var_total) and var_total > 0.0:
         for i in range(d):
-            # ST_i needs f(A) and f(AB_i)
-            mT = np.isfinite(fA) & np.isfinite(fAB[i])
-            if mT.any():
-                dT = fA[mT] - fAB[i][mT]
+            if fA_use.size:
+                dT = fA_use - fAB_use[i]
                 ST[i] = float(np.mean(dT ** 2) / (2.0 * var_total))
-            # S1_i needs f(B) and f(AB_i)
-            m1 = np.isfinite(fB) & np.isfinite(fAB[i])
-            if m1.any():
-                d1 = fB[m1] - fAB[i][m1]
+            if fB_use.size:
+                d1 = fB_use - fAB_use[i]
                 S1[i] = float(
                     (var_total - np.mean(d1 ** 2) / 2.0) / var_total
                 )
 
-    all_out = np.concatenate([fA, fB, fAB.ravel()])
-    retained_fraction = float(np.mean(np.isfinite(all_out)))
+    formal_decomposition = retained_fraction == 1.0
+    method = (
+        'Sobol-Jansen variance decomposition on a fully defined domain'
+        if formal_decomposition
+        else 'exploratory conditional complete-row Sobol-Jansen indices'
+    )
 
     return {
         'params': list(PARAM_NAMES),
@@ -286,4 +330,7 @@ def sobol_indices(p: Dict[str, float], n_base: int = 256, factor: float = 2.0,
         'n_base': int(n_base),
         'var_total': var_total,
         'output': output,
+        'complete_row_fraction': float(np.mean(complete_rows)),
+        'formal_decomposition': formal_decomposition,
+        'method': method,
     }

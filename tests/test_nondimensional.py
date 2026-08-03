@@ -15,11 +15,14 @@ import pytest
 from dlvt.model import make_params, simulate
 from dlvt.analysis import find_interior_equilibria
 from dlvt.nondimensional import (
+    classify_point,
     lhs_zombie_fraction,
     mu_alpha_critical,
     reduced_groups,
     simulate_reduced,
     v_star_elasticities,
+    zombie_boundary_map,
+    zombie_boundary_map_beta,
 )
 
 
@@ -46,12 +49,13 @@ def test_reduced_groups_baseline_values():
     assert g['f'] == pytest.approx(0.15, rel=1e-12)
     assert g['e'] == pytest.approx(0.01, rel=1e-12)
     assert g['gamma'] == pytest.approx(2.0, rel=1e-12)
+    assert g['eta'] == pytest.approx(1.0, rel=1e-12)
 
 
-def test_reduced_groups_rejects_eta_not_one():
-    """The reduced form is derived under eta = 1; other eta must be refused."""
-    with pytest.raises(ValueError):
-        reduced_groups(make_params(eta=1.5))
+def test_reduced_groups_include_eta_as_seventh_group():
+    """R8 M15: the autonomous reduced form closes for every eta>0."""
+    g = reduced_groups(make_params(eta=1.5))
+    assert g['eta'] == pytest.approx(1.5, rel=1e-12)
 
 
 def test_reduced_roundtrip_matches_dimensional_simulation():
@@ -80,6 +84,17 @@ def test_reduced_roundtrip_off_baseline():
     t_dim, V_dim, C_dim, _, _, _ = simulate(p, V0=6.0, C0=2.0, T=80.0)
     _, V_red, C_red = simulate_reduced(p, V0=6.0, C0=2.0, T=80.0,
                                        t_eval=t_dim)
+    assert np.max(np.abs(V_red - V_dim)) < 1e-6
+    assert np.max(np.abs(C_red - C_dim)) < 1e-5
+
+
+def test_reduced_roundtrip_eta_not_one():
+    """R8 CODE-009: the seventh group eta reproduces nonlinear load mapping."""
+    p = make_params(eta=1.5, beta=0.18, O0=1.2)
+    t_dim, V_dim, C_dim, _, _, _ = simulate(p, V0=7.0, C0=1.5, T=60.0)
+    _, V_red, C_red = simulate_reduced(
+        p, V0=7.0, C0=1.5, T=60.0, t_eval=t_dim
+    )
     assert np.max(np.abs(V_red - V_dim)) < 1e-6
     assert np.max(np.abs(C_red - C_dim)) < 1e-5
 
@@ -125,7 +140,7 @@ def test_elasticity_ratio_pairs():
 
 
 # ---------------------------------------------------------------------------
-# Critical mu/alpha ratio (zombie/sustainable flip)
+# Illustrative mu/alpha display-threshold crossing
 # ---------------------------------------------------------------------------
 
 def test_mu_alpha_critical_baseline():
@@ -139,12 +154,15 @@ def test_mu_alpha_critical_baseline():
 # LHS global screening
 # ---------------------------------------------------------------------------
 
-def test_lhs_zombie_fraction_genericity_bracket():
-    """With n=200, seed=1, factor=2 the zombie share among stable draws must
-    fall in a loose genericity bracket (0.25, 0.75): the baseline sits near
-    the regime boundary, so neither regime dominates the +/-2x hypercube."""
-    res = lhs_zombie_fraction(make_params(), n_samples=200, factor=2.0,
-                              seed=1)
+def test_legacy_lhs_threshold_fraction_genericity_bracket():
+    """The deprecated compatibility API returns a nondegenerate label share.
+
+    With n=200, seed=1, factor=2, the below-threshold share among stable
+    draws must fall in a loose genericity bracket (0.25, 0.75).
+    """
+    with pytest.warns(DeprecationWarning, match="lhs_zombie_fraction"):
+        res = lhs_zombie_fraction(make_params(), n_samples=200, factor=2.0,
+                                  seed=1)
     frac = res['zombie_fraction_given_stable']
     assert 0.25 < frac < 0.75
     # basic bookkeeping consistency
@@ -156,3 +174,16 @@ def test_lhs_zombie_fraction_genericity_bracket():
     }
     # honest labelling is part of the contract
     assert 'not' in res['method'].lower() and 'sobol' in res['method'].lower()
+
+
+def test_legacy_label_maps_emit_one_deprecation_warning_per_public_call():
+    p = make_params()
+    with pytest.warns(DeprecationWarning, match="classify_point") as caught:
+        assert classify_point(p) in {"zombie", "sustainable", "none"}
+    assert len(caught) == 1
+    with pytest.warns(DeprecationWarning, match="zombie_boundary_map") as caught:
+        assert zombie_boundary_map(p, n=2)["regimes"].shape == (2, 2)
+    assert len(caught) == 1
+    with pytest.warns(DeprecationWarning, match="zombie_boundary_map_beta") as caught:
+        assert zombie_boundary_map_beta(p, n=2)["regimes"].shape == (2, 2)
+    assert len(caught) == 1

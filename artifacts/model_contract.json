@@ -1,0 +1,126 @@
+{
+  "schema_version": "0.1.0",
+  "status": "r8_g4_formal_sources_implemented_g10_corrections_applied",
+  "model": "dlvt_baseline_regularized",
+  "construct_mapping": {
+    "V": "leader_vitality",
+    "C": "enacted_leadership_scope",
+    "O": "experienced_coordination_load",
+    "I": "modeled_impact_flow"
+  },
+  "parameter_requirements": {
+    "R": ">0",
+    "Vmax": ">0",
+    "delta": ">0",
+    "gamma": ">0",
+    "O0": ">0",
+    "beta": ">0",
+    "eta": ">0",
+    "alpha": ">0",
+    "phi": ">0",
+    "mu": ">0",
+    "eps": ">0"
+  },
+  "baseline_parameters": {
+    "R": 3.0,
+    "Vmax": 10.0,
+    "delta": 0.02,
+    "gamma": 2.0,
+    "O0": 1.0,
+    "beta": 0.25,
+    "eta": 1.0,
+    "alpha": 0.1,
+    "phi": 0.15,
+    "mu": 0.2,
+    "eps": 0.1
+  },
+  "parameter_order": [
+    "R",
+    "Vmax",
+    "delta",
+    "gamma",
+    "O0",
+    "beta",
+    "eta",
+    "alpha",
+    "phi",
+    "mu",
+    "eps"
+  ],
+  "parameter_metadata": {
+    "R": {
+      "symbol_latex": "R",
+      "meaning": "Maximum vitality-recovery inflow",
+      "model_role": "recovery rate"
+    },
+    "Vmax": {
+      "symbol_latex": "V_{\\max}",
+      "meaning": "Vitality ceiling",
+      "model_role": "vitality scale"
+    },
+    "delta": {
+      "symbol_latex": "\\delta",
+      "meaning": "Experienced-load drain coefficient",
+      "model_role": "drain scale"
+    },
+    "gamma": {
+      "symbol_latex": "\\gamma",
+      "meaning": "Experienced-load drain exponent",
+      "model_role": "drain nonlinearity"
+    },
+    "O0": {
+      "symbol_latex": "O_0",
+      "meaning": "Baseline experienced coordination load",
+      "model_role": "load intercept"
+    },
+    "beta": {
+      "symbol_latex": "\\beta",
+      "meaning": "Scope-to-load coupling coefficient",
+      "model_role": "load coupling"
+    },
+    "eta": {
+      "symbol_latex": "\\eta",
+      "meaning": "Scope-to-load exponent",
+      "model_role": "coupling nonlinearity"
+    },
+    "alpha": {
+      "symbol_latex": "\\alpha",
+      "meaning": "Impact-to-scope accumulation coefficient",
+      "model_role": "scope accumulation"
+    },
+    "phi": {
+      "symbol_latex": "\\phi",
+      "meaning": "Experienced-load impact-friction coefficient",
+      "model_role": "impact suppression"
+    },
+    "mu": {
+      "symbol_latex": "\\mu",
+      "meaning": "Enacted-scope decay rate",
+      "model_role": "scope decay"
+    },
+    "eps": {
+      "symbol_latex": "\\varepsilon",
+      "meaning": "Vitality-drain regularization constant",
+      "model_role": "boundary regularization"
+    }
+  },
+  "baseline_status": "illustrative_not_empirically_calibrated",
+  "baseline_reference_results": {
+    "V_star": 4.702529,
+    "C_star": 32.033725,
+    "O_star": 9.008431,
+    "I_star": 64.067449,
+    "eigenvalue_real": -0.204609,
+    "eigenvalue_imag_abs": 0.331186,
+    "drain_coefficient_threshold_C": 44.989795,
+    "trapping_bound_C": 102.666667
+  },
+  "classification": {
+    "primary_output": "continuous_equilibrium_vitality",
+    "threshold_fraction": 0.5,
+    "threshold_status": "illustrative_sensitivity_parameter",
+    "preferred_label": "low_vitality",
+    "deprecated_label": "zombie"
+  },
+  "authoritative_spec": "theory/FORMAL_SPEC.md"
+}

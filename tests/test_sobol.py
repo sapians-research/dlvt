@@ -37,7 +37,7 @@ PARAMS = ['R', 'Vmax', 'delta', 'gamma', 'O0', 'beta', 'eta', 'alpha', 'phi',
 def result():
     """One Sobol' analysis of V*, reused across the read-only assertions."""
     return sobol_indices(make_params(), n_base=N_BASE, seed=SEED,
-                         output='V_star')
+                         factor=1.5, output='V_star')
 
 
 def _idx(result, name):
@@ -101,6 +101,8 @@ def test_output_bookkeeping(result):
     assert result['n_base'] == N_BASE
     assert result['output'] == 'V_star'
     assert result['var_total'] > 0.0
+    assert result['formal_decomposition'] is True
+    assert 'fully defined' in result['method']
 
 
 # ---------------------------------------------------------------------------
@@ -108,9 +110,30 @@ def test_output_bookkeeping(result):
 # ---------------------------------------------------------------------------
 
 def test_retained_fraction_high(result):
-    """The +/-2x log-uniform hypercube leaves most draws with a stable interior
-    equilibrium; measured retained_fraction ~0.98."""
-    assert result['retained_fraction'] > 0.6
+    """A formal decomposition requires a defined output over the full design."""
+    assert result['retained_fraction'] == 1.0
+    assert result['complete_row_fraction'] == 1.0
+
+
+def test_missing_outputs_raise_by_default():
+    """R8 CODE-006: silently filtering a parameter-dependent subset is invalid."""
+    with pytest.raises(ValueError, match='undefined for part'):
+        sobol_indices(
+            make_params(), n_base=N_BASE, seed=SEED, factor=2.0,
+            output='V_star',
+        )
+
+
+def test_conditional_missing_policy_is_explicitly_exploratory():
+    """The opt-in complete-row result must not call itself formal."""
+    r = sobol_indices(
+        make_params(), n_base=N_BASE, seed=SEED, factor=2.0,
+        output='V_star', missing_policy='conditional',
+    )
+    assert r['retained_fraction'] < 1.0
+    assert r['complete_row_fraction'] < 1.0
+    assert r['formal_decomposition'] is False
+    assert 'exploratory conditional' in r['method']
 
 
 # ---------------------------------------------------------------------------
@@ -120,8 +143,8 @@ def test_retained_fraction_high(result):
 def test_determinism_same_seed():
     """Scrambled Sobol' with a fixed seed is deterministic, so repeated calls
     return bitwise-identical S1/ST arrays."""
-    r1 = sobol_indices(make_params(), n_base=N_BASE, seed=SEED)
-    r2 = sobol_indices(make_params(), n_base=N_BASE, seed=SEED)
+    r1 = sobol_indices(make_params(), n_base=N_BASE, seed=SEED, factor=1.5)
+    r2 = sobol_indices(make_params(), n_base=N_BASE, seed=SEED, factor=1.5)
     assert np.array_equal(r1['S1'], r2['S1'])
     assert np.array_equal(r1['ST'], r2['ST'])
     assert r1['retained_fraction'] == r2['retained_fraction']

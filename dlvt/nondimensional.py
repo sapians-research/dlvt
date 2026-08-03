@@ -5,7 +5,7 @@ Nondimensionalization and global-sensitivity utilities for the DLVT model.
 
 This module derives and verifies the reduced (dimensionless) form of the DLVT
 system, computes exact structural invariances of the interior equilibrium, and
-provides global-sensitivity screening tools (elasticities, regime-boundary
+provides global-sensitivity screening tools (elasticities, threshold-display
 maps, and Latin-hypercube sampling with Spearman rank correlations).
 
 Dimensional system (Equations 3.3-3.4 of the paper)
@@ -13,7 +13,7 @@ Dimensional system (Equations 3.3-3.4 of the paper)
     dV/dt = R*(1 - V/Vmax) - delta*O^gamma * V/(V + eps)
     dC/dt = alpha*I - mu*C
 with
-    O = O0 + beta*C^eta          (organisational complexity)
+    O = O0 + beta*C^eta          (experienced coordination load)
     I = C*V / (1 + phi*O)        (energy-gated impact)
 
 Derivation of the nondimensional (reduced) form
@@ -21,9 +21,9 @@ Derivation of the nondimensional (reduced) form
 Introduce the dimensionless state and time
 
     v   = V / Vmax               (vitality as a fraction of capacity)
-    tau = mu * t                 (time in units of the capital-depreciation
+    tau = mu * t                 (time in units of the scope-contraction
                                   time 1/mu)
-    w   = (O - O0) / O0          (excess complexity relative to baseline)
+    w   = (O - O0) / O0          (excess experienced load relative to baseline)
         = beta * C^eta / O0
 
 **Vitality equation.**  Since dV/dt = Vmax * mu * dv/dtau and
@@ -39,44 +39,42 @@ so, dividing by mu*Vmax,
 with rho = R/(mu*Vmax), kappa = delta*O0^gamma/(mu*Vmax), e = eps/Vmax.
 Equation (N1) is exact for every eta.
 
-**Complexity equation (eta = 1 assumed).**  The clean reduced form below
-requires eta = 1 (the baseline calibration); for eta != 1 the w-equation
-picks up an extra factor eta*(w*O0/beta)^((eta-1)/eta)*(beta/O0) and the
-system is no longer autonomous in the six groups alone.  With eta = 1,
-w = beta*C/O0 so dw/dt = (beta/O0)*dC/dt, and since
-dC/dt = C*(alpha*V/(1 + phi*O) - mu),
+**Coordination-load equation (general eta > 0).**  Since
+w = beta*C^eta/O0, logarithmic differentiation gives
 
-    dw/dt = w*(alpha*Vmax*v / (1 + phi*O0*(1 + w)) - mu).
+    dw/dt = eta*w*(1/C)*dC/dt.
+
+Using dC/dt = C*(alpha*V/(1 + phi*O) - mu),
+
+    dw/dt = eta*w*(alpha*Vmax*v / (1 + phi*O0*(1 + w)) - mu).
 
 Dividing by mu (dw/dtau = (1/mu) dw/dt):
 
-    dw/dtau = a * v * w / (1 + f*(1 + w)) - w,                        (N2)
+    dw/dtau = eta*w*[a*v/(1 + f*(1 + w)) - 1],                         (N2)
 
 with a = alpha*Vmax/mu and f = phi*O0.
 
-**Reduced system (eta = 1).**
+**Reduced system (general eta > 0).**
 
     dv/dtau = rho*(1 - v) - kappa*(1 + w)^gamma * v/(v + e)
-    dw/dtau = a*v*w / (1 + f*(1 + w)) - w
+    dw/dtau = eta*w*[a*v/(1 + f*(1 + w)) - 1]
 
-Exactly SIX independent dimensionless groups remain out of the 11 raw
-parameters:
+For general eta, SEVEN independent dimensionless groups remain out of the
+11 raw parameters:
 
     rho   = R / (mu*Vmax)              relative recovery rate      (base: 1.5)
     kappa = delta*O0^gamma / (mu*Vmax) relative baseline drain     (base: 0.01)
-    a     = alpha*Vmax / mu            relative capital gain       (base: 5.0)
+    a     = alpha*Vmax / mu            relative scope gain         (base: 5.0)
     f     = phi*O0                     baseline impact suppression (base: 0.15)
     e     = eps / Vmax                 relative regularisation     (base: 0.01)
     gamma                              drain nonlinearity          (base: 2.0)
+    eta                                load-mapping exponent       (base: 1.0)
 
-Bookkeeping: 11 raw parameters, minus eta (fixed at 1 by assumption), minus
-three scale choices (t ~ 1/mu, V ~ Vmax, C ~ O0/beta) gives 7; the count
-drops to 6 because O0 enters the vector field only through the products
-delta*O0^gamma (inside kappa) and phi*O0 (inside f) once w is measured
-relative to O0.  beta is absorbed *entirely* into the C-scale: it appears
-nowhere in (N1)-(N2) and only re-enters through the map back to dimensional
-capital, C = O0*w/beta.  This is the nondimensional statement of Lemma 2
-(scope absorption).
+At the baseline restriction eta=1, six nontrivial groups remain.  Beta is
+absorbed entirely into the scope scale: it appears nowhere in (N1)-(N2) and
+only re-enters through the dimensional map
+C=(O0*w/beta)^(1/eta).  This is the nondimensional statement of scope
+absorption.
 
 Exact structural consequences for the interior equilibrium
 ----------------------------------------------------------
@@ -100,8 +98,8 @@ numerical tolerance):
   which at baseline gives O* = 8.93313 and V* = 4.67994 (the eps = 0.1
   regularised values are O* = 9.00843, V* = 4.70253).
 
-The critical depreciation-to-accumulation ratio (mu/alpha)_crit at which V*
-crosses the strategic threshold 0.5*Vmax is ~2.163 at the baseline phi
+The illustrative contraction-to-accumulation ratio (mu/alpha)_crit at which
+V* crosses the stipulated 0.5*Vmax display threshold is ~2.163 at baseline phi
 (baseline mu/alpha = 2 sits ~8% below the flip).
 
 Note that although the interior equilibrium (V*, O*) is independent of O0,
@@ -111,11 +109,12 @@ kappa and f.
 Global-sensitivity tools
 ------------------------
 v_star_elasticities()    : central-difference elasticities d ln V*/d ln p_i
-mu_alpha_critical()      : bisection for the zombie/sustainable flip in mu/alpha
-zombie_boundary_map()    : regime grid over (mu/alpha, phi)
-zombie_boundary_map_beta(): regime grid over (mu/alpha, beta) - demonstrates
+mu_alpha_critical()      : bisection for an explicit display-threshold crossing
+zombie_boundary_map()    : deprecated compatibility API over (mu/alpha, phi)
+zombie_boundary_map_beta(): deprecated compatibility API over (mu/alpha, beta)
                            that the boundary is invariant in beta
-lhs_zombie_fraction()    : log-uniform Latin-hypercube screening with Spearman
+lhs_zombie_fraction()    : deprecated compatibility API for threshold screening
+                           with Spearman
                            rank correlations.  This is a RANK-CORRELATION
                            SCREENING (a global-sensitivity proxy), not a full
                            variance-based Sobol decomposition.
@@ -123,17 +122,21 @@ lhs_zombie_fraction()    : log-uniform Latin-hypercube screening with Spearman
 References
 ----------
   Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-  of the Zombie-Leader Equilibrium. Manuscript submitted to The Leadership
-  Quarterly.
+  manuscript in preparation.
 """
 
 from typing import Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.stats import qmc, spearmanr
 
-from .analysis import V_STRATEGIC_FRACTION, find_interior_equilibria
+from .analysis import (
+    DISPLAY_THRESHOLD_FRACTION,
+    classify_equilibrium,
+    find_interior_equilibria,
+)
 
 # The 11 raw model parameters, in canonical order.
 PARAM_NAMES: List[str] = [
@@ -145,38 +148,32 @@ PARAM_NAMES: List[str] = [
 # -- Reduced (nondimensional) form --------------------------------------------
 
 def reduced_groups(p: Dict[str, float]) -> Dict[str, float]:
-    """Map a dimensional parameter dict to the six dimensionless groups.
+    """Map dimensional parameters to the reduced dimensionless groups.
 
     The reduced system (see module docstring) is
 
         dv/dtau = rho*(1 - v) - kappa*(1 + w)^gamma * v/(v + e)
-        dw/dtau = a*v*w / (1 + f*(1 + w)) - w
-
-    and is valid for eta = 1 only.
+        dw/dtau = eta*w*(a*v/(1 + f*(1 + w)) - 1)
 
     Parameters
     ----------
     p : Dict[str, float]
-        Dimensional parameter dictionary (11 raw parameters).
-        Must have p['eta'] == 1; otherwise the reduced w-equation does not
-        close in these groups and a ValueError is raised.
+        Dimensional parameter dictionary with ``eta > 0``.
 
     Returns
     -------
     Dict[str, float]
-        Keys: 'rho', 'kappa', 'a', 'f', 'e', 'gamma'.
-        Baseline values: rho=1.5, kappa=0.01, a=5.0, f=0.15, e=0.01, gamma=2.
+        Keys: 'rho', 'kappa', 'a', 'f', 'e', 'gamma', 'eta'.
+        Baseline values: rho=1.5, kappa=0.01, a=5.0, f=0.15,
+        e=0.01, gamma=2, eta=1.
 
     Raises
     ------
     ValueError
-        If p['eta'] != 1.
+        If ``eta <= 0``.
     """
-    if abs(p['eta'] - 1.0) > 1e-12:
-        raise ValueError(
-            f"reduced_groups requires eta = 1 (got eta = {p['eta']}); the "
-            "reduced form does not close in six groups for eta != 1."
-        )
+    if p['eta'] <= 0.0:
+        raise ValueError(f"eta must be positive (got eta={p['eta']}).")
     return {
         'rho':   p['R'] / (p['mu'] * p['Vmax']),
         'kappa': p['delta'] * p['O0'] ** p['gamma'] / (p['mu'] * p['Vmax']),
@@ -184,6 +181,7 @@ def reduced_groups(p: Dict[str, float]) -> Dict[str, float]:
         'f':     p['phi'] * p['O0'],
         'e':     p['eps'] / p['Vmax'],
         'gamma': p['gamma'],
+        'eta':   p['eta'],
     }
 
 
@@ -209,49 +207,53 @@ def reduced_rhs(tau: float, y: List[float],
     w = max(y[1], 0.0)
     dv = g['rho'] * (1.0 - v) \
         - g['kappa'] * (1.0 + w) ** g['gamma'] * v / (v + g['e'])
-    dw = g['a'] * v * w / (1.0 + g['f'] * (1.0 + w)) - w
+    dw = g['eta'] * w * (
+        g['a'] * v / (1.0 + g['f'] * (1.0 + w)) - 1.0
+    )
     return [dv, dw]
 
 
 def from_dimensional(V: float, C: float,
                      p: Dict[str, float]) -> Tuple[float, float]:
-    """Map dimensional state (V, C) to reduced state (v, w).  Requires eta=1.
+    """Map dimensional state ``(V,C)`` to ``(v,w)`` for any ``eta>0``.
 
     Parameters
     ----------
     V, C : float
-        Dimensional vitality and career capital.
+        Dimensional vitality and enacted leadership scope.
     p : Dict[str, float]
         Dimensional parameter dictionary.
 
     Returns
     -------
     Tuple[float, float]
-        (v, w) = (V/Vmax, beta*C/O0).
+        ``(v,w) = (V/Vmax, beta*C**eta/O0)``.
     """
-    return V / p['Vmax'], p['beta'] * C / p['O0']
+    return V / p['Vmax'], p['beta'] * C**p['eta'] / p['O0']
 
 
 def to_dimensional(v: np.ndarray, w: np.ndarray,
                    p: Dict[str, float]) -> Tuple[np.ndarray, np.ndarray]:
-    """Map reduced state (v, w) back to dimensional (V, C).  Requires eta=1.
+    """Map reduced state ``(v,w)`` back to dimensional ``(V,C)``.
 
-    Note that beta re-enters ONLY here (C = O0*w/beta); it does not appear
-    in the reduced dynamics — the nondimensional face of Lemma 2.
+    Beta re-enters only through
+    ``C=(O0*w/beta)**(1/eta)``; it does not appear in the reduced dynamics.
 
     Parameters
     ----------
     v, w : float or ndarray
-        Reduced vitality and excess complexity.
+        Reduced vitality and excess experienced load.
     p : Dict[str, float]
         Dimensional parameter dictionary.
 
     Returns
     -------
     Tuple[ndarray, ndarray]
-        (V, C) = (Vmax*v, O0*w/beta).
+        ``(V,C) = (Vmax*v, (O0*w/beta)**(1/eta))``.
     """
-    return p['Vmax'] * np.asarray(v), p['O0'] * np.asarray(w) / p['beta']
+    w_arr = np.maximum(np.asarray(w), 0.0)
+    C = (p['O0'] * w_arr / p['beta']) ** (1.0 / p['eta'])
+    return p['Vmax'] * np.asarray(v), C
 
 
 def simulate_reduced(p: Dict[str, float], V0: float = 8.0, C0: float = 0.5,
@@ -260,14 +262,14 @@ def simulate_reduced(p: Dict[str, float], V0: float = 8.0, C0: float = 0.5,
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Integrate the reduced system and map the result back to (t, V, C).
 
-    This is the correctness oracle for the nondimensionalization: for eta = 1
-    the returned trajectory must coincide with :func:`dlvt.model.simulate`
-    up to integration error (see tests/test_nondimensional.py).
+    This is the correctness oracle for the nondimensionalization: for every
+    positive eta the returned trajectory must coincide with
+    :func:`dlvt.model.simulate` up to integration error.
 
     Parameters
     ----------
     p : Dict[str, float]
-        Dimensional parameter dictionary (eta must be 1).
+        Dimensional parameter dictionary with positive eta.
     V0, C0 : float, optional
         Dimensional initial conditions (defaults match dlvt.model.simulate).
     T : float, optional
@@ -287,7 +289,7 @@ def simulate_reduced(p: Dict[str, float], V0: float = 8.0, C0: float = 0.5,
     V : ndarray
         Vitality trajectory mapped back from v (V = Vmax*v).
     C : ndarray
-        Capital trajectory mapped back from w (C = O0*w/beta).
+        Enacted-scope trajectory mapped back from w (C = O0*w/beta).
     """
     g = reduced_groups(p)
     v0, w0 = from_dimensional(V0, C0, p)
@@ -308,7 +310,7 @@ def simulate_reduced(p: Dict[str, float], V0: float = 8.0, C0: float = 0.5,
 def _generous_c_max(p: Dict[str, float]) -> float:
     """Scan window for find_interior_equilibria that avoids the small-beta bug.
 
-    The equilibrium capital scales as C* = (O* - O0)/beta ~ 1/beta, so a
+    The equilibrium scope scales as C* = (O* - O0)/beta ~ 1/beta, so a
     fixed window silently loses the equilibrium at small beta (the source of
     the historical beta_crit = 0.1015 artifact; see
     dlvt.analysis.estimate_bifurcation_interval).
@@ -331,7 +333,7 @@ def stable_equilibrium(p: Dict[str, float]) -> Optional[Dict[str, object]]:
     -------
     Optional[Dict]
         The equilibrium dict (keys 'V', 'C', 'O', 'I', 'stable',
-        'eigenvalues', 'zombie') for the lowest-C stable equilibrium, or
+        'eigenvalues') for the lowest-C stable equilibrium, or
         None if no stable interior equilibrium exists.
     """
     eqs = find_interior_equilibria(p, C_max=_generous_c_max(p))
@@ -396,11 +398,11 @@ def v_star_elasticities(p: Dict[str, float],
 
 def mu_alpha_critical(p: Dict[str, float], lo: float = 0.5, hi: float = 10.0,
                       tol: float = 1e-6, max_iter: int = 100) -> float:
-    """Bisection for the ratio r = mu/alpha at which V* crosses 0.5*Vmax.
+    """Bisection for the ratio r = mu/alpha at a display-threshold crossing.
 
     Holds alpha fixed at p['alpha'] and varies mu = r*alpha (by the exact
     mu/alpha degeneracy of V*, only the ratio matters).  V*(r) is increasing
-    in r, so the zombie/sustainable flip is a single crossing.  If no stable
+    in r, so the stipulated display-label change is a single crossing. If no stable
     interior equilibrium exists at some trial r (which happens for large r,
     where V* would exceed Vmax), that trial is treated as being above the
     threshold.
@@ -411,7 +413,7 @@ def mu_alpha_critical(p: Dict[str, float], lo: float = 0.5, hi: float = 10.0,
         Baseline parameter dictionary.
     lo, hi : float, optional
         Initial bracket for r = mu/alpha.  V*(lo) must be below the
-        strategic threshold and V*(hi) above it (or infeasible).
+        display threshold and V*(hi) above it (or infeasible).
     tol : float, optional
         Absolute tolerance on r, default 1e-6.
     max_iter : int, optional
@@ -427,7 +429,7 @@ def mu_alpha_critical(p: Dict[str, float], lo: float = 0.5, hi: float = 10.0,
     ValueError
         If the initial bracket does not straddle the threshold.
     """
-    target = V_STRATEGIC_FRACTION * p['Vmax']
+    target = DISPLAY_THRESHOLD_FRACTION * p['Vmax']
 
     def excess(r: float) -> Optional[float]:
         """V*(r) - target, or None if no stable interior equilibrium."""
@@ -464,14 +466,15 @@ def mu_alpha_critical(p: Dict[str, float], lo: float = 0.5, hi: float = 10.0,
     return 0.5 * (lo + hi)
 
 
-# -- Regime boundary maps --------------------------------------------------------
+# -- Deprecated compatibility-label maps ---------------------------------------
 
 def classify_point(p: Dict[str, float]) -> str:
-    """Classify a parameter point as 'zombie', 'sustainable', or 'none'.
+    """Return deprecated compatibility labels for a parameter point.
 
-    'none' means no stable interior equilibrium exists (collapse-prone /
-    infeasible).  Otherwise the lowest-C stable equilibrium is classified by
-    the strategic threshold V_strategic = 0.5*Vmax.
+    The historical string values are preserved only for callers of the
+    legacy map APIs below. ``'none'`` means that no stable interior
+    equilibrium was returned; the other labels encode a comparison with the
+    illustrative ``0.5*Vmax`` display threshold and are not scientific states.
 
     Parameters
     ----------
@@ -483,21 +486,32 @@ def classify_point(p: Dict[str, float]) -> str:
     str
         One of 'zombie', 'sustainable', 'none'.
     """
-    eq = stable_equilibrium(p)
-    if eq is None:
+    warnings.warn(
+        "classify_point() returns deprecated compatibility labels; use "
+        "classify_equilibrium() and retain continuous outputs.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _classify_point_compat(p)
+
+
+def _classify_point_compat(p: Dict[str, float]) -> str:
+    """Internal non-warning helper for deprecated grid wrappers."""
+    result = classify_equilibrium(p)
+    if result['status'] == 'no-stable-interior-equilibrium':
         return 'none'
-    return 'zombie' if eq['zombie'] else 'sustainable'
+    return 'zombie' if result['status'] == 'low-vitality' else 'sustainable'
 
 
 def zombie_boundary_map(p: Dict[str, float],
                         r_range: Tuple[float, float] = (1.0, 4.0),
                         phi_range: Tuple[float, float] = (0.02, 0.40),
                         n: int = 41) -> Dict[str, object]:
-    """Regime map over the (mu/alpha, phi) plane.
+    """Deprecated compatibility-label map over the (mu/alpha, phi) plane.
 
     For each grid point, mu is set to r*alpha (alpha held fixed) and phi is
     set to the grid value; the point is classified with
-    :func:`classify_point`.  The zombie/sustainable boundary in this plane is
+    :func:`classify_point`. The historical label boundary in this plane is
     the curve (mu/alpha)_crit(phi); at baseline phi = 0.15 it sits at
     r ~ 2.163, about 8% above the baseline ratio mu/alpha = 2.
 
@@ -523,6 +537,12 @@ def zombie_boundary_map(p: Dict[str, float],
         - 'baseline'   : (mu/alpha, phi) of the input p
         - 'axes'       : ('mu/alpha', 'phi')
     """
+    warnings.warn(
+        "zombie_boundary_map() is deprecated; build maps from continuous "
+        "equilibrium outputs and an explicit display threshold.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     r_values = np.linspace(r_range[0], r_range[1], n)
     phi_values = np.linspace(phi_range[0], phi_range[1], n)
     regimes = np.empty((n, n), dtype=object)
@@ -531,7 +551,7 @@ def zombie_boundary_map(p: Dict[str, float],
             p_trial = dict(p)
             p_trial['mu'] = r * p['alpha']
             p_trial['phi'] = phi
-            regimes[i, j] = classify_point(p_trial)
+            regimes[i, j] = _classify_point_compat(p_trial)
     return {
         'r_values': r_values,
         'phi_values': phi_values,
@@ -545,12 +565,12 @@ def zombie_boundary_map_beta(p: Dict[str, float],
                              r_range: Tuple[float, float] = (1.0, 4.0),
                              beta_range: Tuple[float, float] = (0.05, 1.0),
                              n: int = 41) -> Dict[str, object]:
-    """Regime map over the (mu/alpha, beta) plane — beta-invariance check.
+    """Deprecated compatibility-label map over (mu/alpha, beta).
 
     Same shape as :func:`zombie_boundary_map`, but the second axis is beta.
     Because V* has exactly zero elasticity in beta (Lemma 2 / the reduced
     form), every column of the returned grid (fixed r, varying beta) must be
-    constant: the zombie boundary is a vertical line, invariant in beta.
+    constant: the historical label boundary is vertical and invariant in beta.
     The boolean 'boundary_invariant_in_beta' reports this check.
 
     Parameters
@@ -571,6 +591,12 @@ def zombie_boundary_map_beta(p: Dict[str, float],
         rows indexed by beta), 'baseline', 'axes',
         'boundary_invariant_in_beta' (bool).
     """
+    warnings.warn(
+        "zombie_boundary_map_beta() is deprecated; build maps from continuous "
+        "equilibrium outputs and an explicit display threshold.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     r_values = np.linspace(r_range[0], r_range[1], n)
     beta_values = np.linspace(beta_range[0], beta_range[1], n)
     regimes = np.empty((n, n), dtype=object)
@@ -579,7 +605,7 @@ def zombie_boundary_map_beta(p: Dict[str, float],
             p_trial = dict(p)
             p_trial['mu'] = r * p['alpha']
             p_trial['beta'] = beta
-            regimes[i, j] = classify_point(p_trial)
+            regimes[i, j] = _classify_point_compat(p_trial)
     invariant = all(
         len({regimes[i, j] for i in range(n)}) == 1 for j in range(n)
     )
@@ -598,12 +624,13 @@ def zombie_boundary_map_beta(p: Dict[str, float],
 def lhs_zombie_fraction(p: Dict[str, float], n_samples: int = 600,
                         factor: float = 2.0, seed: int = 1
                         ) -> Dict[str, object]:
-    """Log-uniform Latin-hypercube screening of regime outcomes and V*.
+    """Deprecated compatibility wrapper for threshold screening of V*.
 
     Draws a seeded Latin hypercube (scipy.stats.qmc.LatinHypercube) over all
     11 raw parameters, each log-uniform on [p_i/factor, p_i*factor], and for
     each draw records whether a stable interior equilibrium exists and, if
-    so, whether it is a zombie (V* < 0.5*Vmax).  Spearman rank correlations
+    so, whether it falls below the illustrative ``0.5*Vmax`` threshold.
+    Spearman rank correlations
     between each log-parameter and V* (over the stable draws) are returned as
     a global-sensitivity proxy.
 
@@ -629,10 +656,10 @@ def lhs_zombie_fraction(p: Dict[str, float], n_samples: int = 600,
         Keys:
         - 'n_samples', 'factor', 'seed'  : the inputs
         - 'n_stable'                     : draws with a stable interior eq.
-        - 'n_zombie'                     : stable draws classified zombie
+        - 'n_zombie'                     : deprecated key; below-threshold draws
         - 'frac_stable'                  : n_stable / n_samples
-        - 'zombie_fraction_given_stable' : n_zombie / n_stable
-        - 'zombie_fraction_overall'      : n_zombie / n_samples
+        - 'zombie_fraction_given_stable' : deprecated compatibility key
+        - 'zombie_fraction_overall'      : deprecated compatibility key
         - 'v_stars'                      : ndarray of V* over stable draws
         - 'spearman'                     : dict param -> Spearman rho between
                                            log(param) and V* (stable draws)
@@ -641,10 +668,16 @@ def lhs_zombie_fraction(p: Dict[str, float], n_samples: int = 600,
 
     Notes
     -----
-    At baseline with factor=2.0 the expected zombie share among stable draws
+    At baseline with factor=2.0 the expected below-threshold share among stable draws
     is ~0.49 +/- 0.1.  Equilibria are searched with the generous beta-aware
     C_max window (see :func:`_generous_c_max`).
     """
+    warnings.warn(
+        "lhs_zombie_fraction() is deprecated; use continuous-output screening "
+        "and an explicitly named low-vitality threshold summary.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     sampler = qmc.LatinHypercube(d=len(PARAM_NAMES), seed=seed)
     U = sampler.random(n=n_samples)
 
@@ -664,7 +697,7 @@ def lhs_zombie_fraction(p: Dict[str, float], n_samples: int = 600,
             stable_mask[i] = True
             v_stars[i] = eq['V']
             zombie_mask[i] = bool(
-                eq['V'] < V_STRATEGIC_FRACTION * p_trial['Vmax']
+                eq['V'] < DISPLAY_THRESHOLD_FRACTION * p_trial['Vmax']
             )
 
     n_stable = int(stable_mask.sum())
