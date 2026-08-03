@@ -1,9 +1,34 @@
-# DLVT research code
+# dlvt — Dynamic Leadership Vitality Theory (research code)
 
-This directory contains the executable model, tests, and reproducible numerical
-experiments for Dynamic Leadership Vitality Theory (DLVT). The manuscript is in
-preparation. The package implements a formal model; it is not a diagnostic,
-clinical tool, or empirically calibrated forecasting system.
+[![CI](https://github.com/wbendinelli/dlvt/actions/workflows/ci.yml/badge.svg)](https://github.com/wbendinelli/dlvt/actions/workflows/ci.yml)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Preprint](https://img.shields.io/badge/preprint-SSRN%206455001-b31b1b.svg)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6455001)
+[![Cite](https://img.shields.io/badge/cite-CITATION.cff-lightgrey.svg)](CITATION.cff)
+
+Executable model, tests, and reproducible numerical experiments for
+**Dynamic Leadership Vitality Theory (DLVT)** — a formal, conditional theory
+of how enacted leadership scope, experienced coordination load, and
+subjective vitality may coevolve. The accompanying paper is
+[*Dynamic Leadership Vitality Theory: How Expanding Leadership Scope Can
+Drain the Vitality That Sustains It*](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6455001)
+(preprint; manuscript in preparation for journal submission).
+
+The package implements a formal model; it is **not** a diagnostic, clinical
+tool, or empirically calibrated forecasting system, and it must never be
+used to classify, rank, or make decisions about individual people.
+
+**Quick links:** [Install](#install) ·
+[Quick start](#canonical-quick-start) ·
+[What the implementation establishes](#what-the-implementation-establishes) ·
+[Canonical API](#canonical-api) · [Tests](#tests) ·
+[Cite](#cite) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) ·
+[Contributing](CONTRIBUTING.md)
+
+This tree is the reviewed public export of a private research monorepo:
+every file here is allowlisted, hash-verified
+(`EXPORT_SHA256SUMS.txt`), and regenerated only through the export gate —
+see "Figures and generated artifacts" below.
 
 ## Model
 
@@ -232,9 +257,28 @@ The current implementation does not provide:
 Use the code to reproduce and challenge the formal model. Do not use it to
 classify people.
 
+## Cite
+
+Citation metadata live in [`CITATION.cff`](CITATION.cff) (GitHub's "Cite
+this repository" uses it). Until an archival DOI is minted, cite the
+software version or commit used, for example:
+
+> Bendinelli, W. (2026). *dlvt: Dynamic Leadership Vitality Theory research
+> code* (Version 2.2.0rc2) [Computer software].
+> https://github.com/wbendinelli/dlvt
+
+The theory paper is available as an SSRN preprint (abstract id 6455001);
+the manuscript remains in preparation for journal submission.
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) for the supported-version table and how to
+report a vulnerability. Dependency locks are kept current against
+Dependabot advisories.
+
 ## License and citation status
 
-The package metadata declares the MIT license. A stable citation and archival
-DOI will be added only after the manuscript and public export pass the release
-gates. Until then, cite the repository version/commit used in an analysis and
-describe the manuscript as in preparation.
+The package is MIT licensed ([`LICENSE`](LICENSE)). A stable archival DOI
+will be added only after the manuscript and public export pass the release
+gates. Until then, cite the repository version/commit used in an analysis
+and describe the manuscript as in preparation.

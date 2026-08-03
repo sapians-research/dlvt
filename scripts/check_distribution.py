@@ -52,7 +52,7 @@ def _metadata_errors(payload: bytes, expected_version: str) -> List[str]:
         errors.append(f"unexpected distribution name: {message.get('Name')!r}")
     if message.get("Version") != expected_version:
         errors.append(f"unexpected distribution version: {message.get('Version')!r}")
-    if message.get("Requires-Python") != ">=3.9":
+    if message.get("Requires-Python") != ">=3.10":
         errors.append(f"unexpected Requires-Python: {message.get('Requires-Python')!r}")
     requirements = message.get_all("Requires-Dist", [])
     for dependency in ("numpy", "scipy", "matplotlib"):
