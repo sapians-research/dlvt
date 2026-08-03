@@ -4,8 +4,8 @@ dlvt.stochastic
 Stochastic robustness of the DLVT interior attractor (virtual experiment A).
 
 The deterministic DLVT model (see :mod:`dlvt.model`) has a unique, globally
-asymptotically stable interior equilibrium ("zombie attractor") whenever
-``alpha*Vmax/mu > 1 + phi*O0`` (Theorem 2, :mod:`dlvt.analysis`). A natural
+asymptotically stable interior equilibrium, relative to positive scope and
+under the R8 existence condition ``F(O0)>0``. A natural
 methodological question is whether that attractor *survives noise*: real
 executives do not follow a deterministic vector field, so the claim "the
 system settles at (V*, C*)" is only useful if the equilibrium is robust to
@@ -18,10 +18,12 @@ integrator for the DLVT drift plus two independent noise channels:
     dC = [ alpha*I - mu*C ]                                dt + sigma_C * C dW2
 
 The V-channel uses *additive* noise (energy shocks that do not scale with the
-current level) and the C-channel uses *multiplicative* noise (capital shocks
-proportional to accumulated capital, keeping C >= 0 in the small-noise limit).
-State is clamped to the physical domain V in [0, Vmax] and C in [0, inf) after
-every step, mirroring the positivity handling in :func:`dlvt.model.simulate`.
+current level) and the C-channel uses *multiplicative* noise (scope shocks
+proportional to enacted scope, keeping C >= 0 in the small-noise limit).
+State is projected to V in [0,Vmax] and C in [0,infinity) after every step.
+This is a projected Euler–Maruyama numerical experiment, not a fully specified
+reflected SDE with a local-time term. Its finite-step persistence results are
+computational diagnostics, not a stochastic stability theorem.
 
 Everything is deterministic given a seed: a fixed ``seed`` reproduces the exact
 same Wiener increments (via :class:`numpy.random.default_rng`) and therefore
@@ -36,15 +38,14 @@ escape_curve()          : persistence and escape metrics vs a list of sigma_V
 References
 ----------
   Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-  of the Zombie-Leader Equilibrium. Manuscript submitted to The Leadership
-  Quarterly.
+  manuscript in preparation.
 """
 
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .model import complexity, impact
+from .model import coordination_load, impact
 from .analysis import find_interior_equilibria
 
 
@@ -77,7 +78,7 @@ def simulate_sde(p: Dict[str, float], V0: float, C0: float, T: float,
     V0 : float
         Initial vitality, clamped into ``[0, Vmax]``.
     C0 : float
-        Initial career capital, clamped into ``[0, inf)``.
+        Initial enacted-scope stock, clamped into ``[0, inf)``.
     T : float
         Integration horizon; the path spans ``[0, T]``.
     dt : float, optional
@@ -98,14 +99,15 @@ def simulate_sde(p: Dict[str, float], V0: float, C0: float, T: float,
     V : ndarray, shape (n_steps + 1,)
         Vitality path V(t), clamped to ``[0, Vmax]``.
     C : ndarray, shape (n_steps + 1,)
-        Career-capital path C(t), clamped to ``[0, inf)``.
+        Enacted-scope path C(t), projected to ``[0, inf)``.
 
     Notes
     -----
     The number of steps is ``n_steps = int(round(T / dt))``. Noise increments
     are drawn as ``sqrt(dt) * N(0, 1)``. The drift is evaluated with the same
-    ``complexity``/``impact`` helpers as the deterministic model so the two
-    integrators share a single source of truth.
+    ``coordination_load``/``impact`` helpers as the deterministic model so the two
+    integrators share a single source of truth. Projection is an algorithmic
+    boundary rule and must not be interpreted as a reflected-SDE solution.
 
     Examples
     --------
@@ -139,7 +141,7 @@ def simulate_sde(p: Dict[str, float], V0: float, C0: float, T: float,
     v = V[0]
     c = C[0]
     for i in range(n_steps):
-        O = complexity(c, p)
+        O = coordination_load(c, p)
         recovery = R * (1.0 - v / Vmax)
         drain = delta * O**gamma * v / (v + eps)
         I = impact(v, c, O, p)
@@ -205,7 +207,7 @@ def attractor_persistence(p: Dict[str, float], sigma_V: float,
       scaled by ``C*/V*`` so the band is comparably tight in each coordinate);
     * **escape fraction** — fraction of *paths* that hit ``V < 0.5`` or
       ``C < 1`` at any post-burn-in time (a proxy for the attractor being
-      destabilised into collapse).
+      displaced toward the boundary).
 
     Parameters
     ----------

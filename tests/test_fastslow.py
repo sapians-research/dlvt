@@ -13,10 +13,11 @@ import numpy as np
 import pytest
 from scipy.optimize import brentq
 
-from dlvt.model import make_params, complexity
+from dlvt.model import make_params, coordination_load
 from dlvt.analysis import find_interior_equilibria
 from dlvt.fastslow import (
     basin_portrait_grid,
+    quasi_static_nullcline,
     reduction_error,
     slow_manifold,
     v_quasi_equilibrium,
@@ -67,14 +68,22 @@ def test_reduced_equilibrium_coincides_with_full_interior_equilibrium():
     V_star, C_star = eq["V"], eq["C"]
 
     def g(C):
-        O = complexity(C, p)
+        O = coordination_load(C, p)
         return (p["alpha"] * v_quasi_equilibrium(O, p)
                 / (1.0 + p["phi"] * O) - p["mu"])
 
     C_red = brentq(g, 20.0, 45.0, xtol=1e-12, rtol=1e-14)
-    V_red = slow_manifold(C_red, p)
+    V_red = quasi_static_nullcline(C_red, p)
     assert C_red == pytest.approx(C_star, abs=1e-6)
     assert V_red == pytest.approx(V_star, abs=1e-6)
+
+
+def test_slow_manifold_name_is_deprecated_because_graph_is_not_invariant():
+    """R8 CODE-010: preserve compatibility without overstating geometry."""
+    p = make_params()
+    with pytest.warns(DeprecationWarning):
+        legacy = slow_manifold(5.0, p)
+    assert legacy == pytest.approx(quasi_static_nullcline(5.0, p))
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -83,7 +92,7 @@ def test_reduced_equilibrium_coincides_with_full_interior_equilibrium():
 
 
 def test_reduction_tracks_slow_dynamics_with_measured_error():
-    """From (V0, C0) = (8, 5): the reduction tracks the capital drift, but
+    """From (V0, C0) = (8, 5): the reduction tracks enacted-scope drift, but
     with a measured max relative C-error of ~15% concentrated in the spiral
     overshoot near t ~ 9 (NOT a 'few percent everywhere' — the monotone 1D
     flow cannot overshoot). Mean error is ~1.3%. Bounds are the measured
@@ -123,7 +132,7 @@ def test_eigen_separation_is_about_3_not_15_and_modes_mix():
 # ────────────────────────────────────────────────────────────────────────────
 
 
-def test_basin_grid_all_positive_capital_ics_converge():
+def test_basin_grid_all_positive_scope_initial_conditions_converge():
     """8x8 grid, T=400: every initial condition with C0 > 0 enters and stays
     in the band around (V*, C*) — zero exceptions (Theorem 2c: the basin is
     {C > 0}, no escape, no competing attractor)."""

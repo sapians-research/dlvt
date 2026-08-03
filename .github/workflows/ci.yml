@@ -1,0 +1,118 @@
+name: Public package CI
+
+# NOTE (monorepo): GitHub Actions only executes workflows under the
+# repository-root .github/, so this file is DORMANT inside the monorepo.
+# It ships with the public export (see PUBLIC_EXPORT_ALLOWLIST.txt) and runs
+# in the standalone dlvt repository. The monorepo runs the equivalent
+# pipeline from .github/workflows/public-package.yml at the root; keep the
+# two in step when editing either.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Materialize reviewed public surface
+        shell: bash
+        run: |
+          export_root="${RUNNER_TEMP}/dlvt-public-${{ matrix.python-version }}"
+          python scripts/check_public_export.py --export-dir "$export_root"
+          python "$export_root/scripts/check_public_export.py" --check-tree "$export_root"
+          echo "EXPORT_ROOT=$export_root" >> "$GITHUB_ENV"
+      - name: Install exported package and test tools
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run standalone tests
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          python -m pytest tests/ -q
+      - name: Run public example and metadata gates
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          python examples/quickstart.py
+          python scripts/check_version_sync.py
+      - name: Reproduce reviewed figures and scenario manifest
+        if: matrix.python-version == '3.12'
+        shell: bash
+        run: |
+          figure_dir="${RUNNER_TEMP}/dlvt-figures"
+          manifest="${RUNNER_TEMP}/figure_scenarios.json"
+          export MPLCONFIGDIR="${RUNNER_TEMP}/matplotlib"
+          cd "$EXPORT_ROOT"
+          python scripts/generate_reviewed_figures.py \
+            --fig 2,10 \
+            --output-dir "$figure_dir" \
+            --manifest-output "$manifest"
+          test -s "$figure_dir/fig2_three_scenarios.pdf"
+          test -s "$figure_dir/fig10_intervention_comparison.pdf"
+          cmp "$manifest" artifacts/figure_scenarios.json
+
+  distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Materialize reviewed public surface
+        shell: bash
+        run: |
+          export_root="${RUNNER_TEMP}/dlvt-public-distribution"
+          python scripts/check_public_export.py --export-dir "$export_root"
+          python "$export_root/scripts/check_public_export.py" --check-tree "$export_root"
+          echo "EXPORT_ROOT=$export_root" >> "$GITHUB_ENV"
+      - name: Build wheel and source distribution from export
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          python -m pip install --upgrade pip "build==1.2.2.post1"
+          python -m build
+      - name: Inspect archives, metadata, versions, and hashes
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          wheel=$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit)
+          sdist=$(find dist -maxdepth 1 -type f -name '*.tar.gz' -print -quit)
+          test -n "$wheel"
+          test -n "$sdist"
+          python scripts/check_distribution.py --wheel "$wheel" --sdist "$sdist"
+          python scripts/check_version_sync.py
+          echo "WHEEL=$EXPORT_ROOT/$wheel" >> "$GITHUB_ENV"
+          echo "SDIST=$EXPORT_ROOT/$sdist" >> "$GITHUB_ENV"
+      - name: Install and smoke-test wheel
+        shell: bash
+        run: |
+          python -m venv "${RUNNER_TEMP}/dlvt-wheel-smoke"
+          "${RUNNER_TEMP}/dlvt-wheel-smoke/bin/python" -m pip install "$WHEEL"
+          cd "$RUNNER_TEMP"
+          "${RUNNER_TEMP}/dlvt-wheel-smoke/bin/python" \
+            "$EXPORT_ROOT/scripts/installed_smoke.py"
+      - name: Install and smoke-test source distribution
+        shell: bash
+        run: |
+          python -m venv "${RUNNER_TEMP}/dlvt-sdist-smoke"
+          "${RUNNER_TEMP}/dlvt-sdist-smoke/bin/python" -m pip install "$SDIST"
+          cd "$RUNNER_TEMP"
+          "${RUNNER_TEMP}/dlvt-sdist-smoke/bin/python" \
+            "$EXPORT_ROOT/scripts/installed_smoke.py"

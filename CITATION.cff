@@ -1,25 +1,29 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: >-
+  If you use this research code, cite the software version or commit used.
+  The manuscript remains in preparation and has no archival DOI yet.
+title: DLVT research code
 type: software
-title: "DLVT: Dynamic Leadership Vitality Theory — a dynamical systems model of executive sustainability"
-version: 2.1.0
+version: 2.2.0rc1
+date-released: 2026-07-11
 authors:
   - family-names: Bendinelli
     given-names: William
-    email: wbendinelli@gmail.com
-repository-code: "https://github.com/wbendinelli/dlvt"
+repository-code: https://github.com/wbendinelli/dlvt
+url: https://github.com/wbendinelli/dlvt
 license: MIT
 keywords:
-  - dynamical-systems
-  - leadership
-  - executive-sustainability
-  - capability-trap
-  - ode
+  - leadership dynamics
+  - subjective vitality
+  - dynamical systems
+  - research software
 preferred-citation:
-  type: unpublished
-  title: "Dynamic Leadership Vitality Theory: A Closed-Form Capability-Trap Model of Leader Vitality and Career Capital"
+  type: generic
+  title: >-
+    Dynamic Leadership Vitality Theory: How Expanding Leadership Scope Can
+    Drain the Vitality That Sustains It
   authors:
     - family-names: Bendinelli
       given-names: William
   year: 2026
-  notes: "Working paper"
+  notes: Manuscript in preparation; cite the software version or commit used.

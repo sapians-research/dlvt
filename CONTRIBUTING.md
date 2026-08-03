@@ -1,125 +1,79 @@
-# Contributing to DLVT
+# Contributing to DLVT research code
 
-Thank you for your interest in contributing to the Dynamic Leadership Vitality Theory project!
+Contributions that improve correctness, reproducibility, documentation, or
+tests are welcome. This package implements a formal research model; it is not
+a personnel, diagnostic, clinical, or forecasting tool.
 
-## Code of Conduct
-
-Be respectful and collaborative. We're building a scientific tool for everyone.
-
-## Getting Started
-
-### 1. Clone and Install
+## Development setup
 
 ```bash
 git clone https://github.com/wbendinelli/dlvt.git
 cd dlvt
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
+python -m pytest tests/ -q
+python examples/quickstart.py
+python scripts/check_public_export.py
+python scripts/check_version_sync.py
 ```
 
-### 2. Create a Branch
+The supported Python versions are those in `.github/workflows/ci.yml` and the
+package metadata. Do not broaden the range without adding the version to CI.
+
+## Scientific contract
+
+The state variables and derived quantities have narrow meanings:
+
+- `V`: subjective vitality available for leadership activity;
+- `C`: enacted leadership scope;
+- `O`: experienced coordination load;
+- `I`: modeled impact flow, not observed performance.
+
+The default parameter vector is illustrative. Never change it silently. A
+parameter or equation change requires:
+
+1. a clear scientific rationale in the pull request;
+2. tests for the changed result and relevant boundary/counterexample;
+3. updated documentation and examples;
+4. regenerated numerical artifacts in the source manuscript repository;
+5. a changelog entry if public behavior changes.
+
+Do not introduce a categorical threshold without requiring it explicitly in
+the API and documenting that it is a calibration. Do not describe
+`Gamma = delta*O**gamma/R` as the sign of `dV/dt`, and do not conflate the
+drain-coefficient threshold with the trapping bound.
+
+## Code and test expectations
+
+- Follow PEP 8 and use NumPy-style docstrings for public functions.
+- Prefer small, explicit functions and deterministic tests.
+- Add property, boundary, or counterexample tests for mathematical claims.
+- Seed stochastic experiments and state whether projection changes their
+  interpretation.
+- Mark numerical diagnostics as experimental unless a formal contract and
+  validation gate exist.
+- Avoid hard-coded test counts; test discovery is authoritative.
+
+Run before opening a pull request:
 
 ```bash
-git checkout -b feature/your-feature-name
+python -m pytest tests/ -q
+python examples/quickstart.py
+python scripts/check_public_export.py
+python scripts/check_version_sync.py
+python -m build
 ```
 
-## Development Guidelines
+## API compatibility
 
-### Code Style
+Deprecated names remain only for the 2.2 compatibility line. New code must use
+the canonical names documented in `README.md`. Removing an alias requires the
+planned 3.0 major release and a changelog entry.
 
-- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/)
-- Use [Black](https://black.readthedocs.io/) for formatting:
-  ```bash
-  black dlvt/ scripts/
-  ```
+## Pull requests and issues
 
-### Documentation
+Keep pull requests focused. Explain the observed behavior, expected behavior,
+scientific or software rationale, and validation commands. Bug reports should
+include a minimal example, Python version, operating system, package version
+or commit, and the full traceback.
 
-- All functions must have docstrings (NumPy style)
-- Include parameter descriptions, return types, and examples
-- Link to relevant paper equations/theorems
-
-### Testing
-
-- Write unit tests for new functions
-- Run tests before submitting:
-  ```bash
-  pytest
-  ```
-
-## Pull Request Process
-
-1. **Create a feature branch** with a descriptive name
-2. **Make your changes** with clear, atomic commits
-3. **Update documentation** if API changes
-4. **Test thoroughly** — especially on edge cases
-5. **Submit a pull request** with a clear description
-
-## Reporting Bugs
-
-Create a GitHub issue with:
-- **Title**: Clear, concise summary
-- **Description**: What you observed vs. expected behavior
-- **Steps to reproduce**: Minimal code example
-- **Environment**: Python version, OS, installed versions
-
-## Suggesting Features
-
-Open an issue with:
-- **Title**: Feature request — [your idea]
-- **Description**: What problem does it solve?
-- **Example usage**: How would users interact with it?
-- **Related work**: Any similar tools or papers
-
-## Paper References
-
-When modifying model equations, always cite the relevant theorem/proposition:
-
-```python
-def my_function():
-    """
-    Description.
-
-    References
-    ----------
-    Theorem 1 — [brief summary]
-    Proposition 2 — [brief summary]
-    """
-```
-
-## File Structure Guidelines
-
-```
-dlvt/
-├── __init__.py      # Public API exports
-├── model.py         # Core ODE system (NEVER modify parameter defaults without discussion)
-├── analysis.py      # Equilibrium, bifurcation analysis
-└── figures.py       # Publication figure generation
-
-scripts/
-├── run_all_figures.py                  # Master script
-├── fig8_bifurcation_hysteresis.py     # Extended analysis
-├── fig9_robustness.py
-└── fig10_intervention_comparison.py
-```
-
-## Default Parameters
-
-The parameter set in `dlvt.model.DEFAULT_PARAMS` is tied to the published paper results. **Do not modify without:**
-1. Updating the paper citation
-2. Regenerating all figures
-3. Notifying the author
-
-## Adding New Figures
-
-1. Create a function `figN(output_dir='figures/')` in `dlvt/figures.py` (for Figures 1–7)
-2. Or create a standalone script in `scripts/figN_*.py` (for Figures 8+)
-3. Add entry to `FIGURES` dict in `scripts/run_all_figures.py`
-4. Ensure output saved as `{output_dir}/figN_{name}.png` and `.pdf`
-
-## Questions?
-
-Open a discussion on GitHub or contact the author.
-
-## License
-
-All contributions are licensed under the MIT License (see LICENSE file).
+All contributions are licensed under the MIT License.

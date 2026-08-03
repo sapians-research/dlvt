@@ -1,22 +1,21 @@
 """
 dlvt.analysis
 =============
-Equilibrium analysis, stability classification, and bifurcation utilities for the DLVT model.
+Equilibrium analysis, stability, and threshold-sensitive reporting for DLVT.
 
-This module implements the analytical and numerical results from "Dynamic Leadership
-Vitality Theory: A Formal Model of the Zombie-Leader Equilibrium" (W. Bendinelli, 2026),
-targeting *The Leadership Quarterly*. Includes Theorems 1–2, Lemma 2, and Propositions 1–3.
+This module implements the reviewed formal contract for the DLVT manuscript in
+preparation. Constructs and bundled values are illustrative, not calibrated.
 
 Theoretical Foundations (corrected statements, v2.1)
 ----------------------------------------------------
-THEOREM 1 (Existence): Whenever αVmax/μ > 1 + φO₀, the DLVT system possesses an interior
-  fixed point (V*, C*) with V*, C* > 0. (When the inequality fails, the C-nullcline
-  V_c(C) = μ(1+φO)/α sits at or above Vmax for all C ≥ 0, dC/dt < 0 everywhere, and no
-  interior equilibrium exists.)
+THEOREM 1 (Existence): let V_c(O)=(μ/α)(1+φO) and
+  F(O)=R(1−V_c/Vmax)−δO^γV_c/(V_c+ε).  Because F is strictly decreasing, an interior
+  fixed point exists if and only if F(O₀)>0.  The older inequality
+  αVmax/μ>1+φO₀ is necessary but not sufficient because it omits baseline drain.
 
 THEOREM 2a (Global Uniqueness): the interior equilibrium is unique in the ENTIRE positive
   orthant, for ALL positive parameter vectors — not just the baseline. Proof: along the
-  C-nullcline V_c(O) = (μ/α)(1+φO), define
+  scope nullcline V_c(O) = (μ/α)(1+φO), define
       Φ(O) = R(1 − V_c/Vmax) − δ·O^γ·V_c/(V_c+ε).
   Every term of dΦ/dO is strictly negative:
       −(R/Vmax)·V_c′ < 0,
@@ -32,99 +31,91 @@ THEOREM 2b (No Hopf / no cycles): at any interior equilibrium, dC/dt = 0 forces
   and J[0,0] < 0 identically, so trace(J) < 0 at EVERY interior equilibrium for all
   positive parameters — no Hopf bifurcation exists anywhere in parameter space. This is
   consistent with (and independent of) the Bendixson–Dulac certificate B(V,C) = 1/C, which
-  rules out closed orbits globally on {C > 0}. No elementary global Lyapunov function
-  exists for this system (weighted quadratics fail), so Dulac + Poincaré–Bendixson is the
-  appropriate proof route.
+  rules out closed orbits globally on {C > 0}. No Lyapunov function is supplied;
+  the weighted-quadratic candidates examined in the project fail, so the current
+  proof uses Dulac + Poincaré–Bendixson.
 
-THEOREM 2c (Global Asymptotic Stability): the unique interior equilibrium is globally
-  asymptotically stable on the OPEN set {C > 0} ∩ Ω. The line C = 0 is invariant and
+THEOREM 2c (Global Asymptotic Stability, eta ≥ 1): the unique interior equilibrium is
+  globally asymptotically stable on the OPEN set {C > 0} ∩ Ω. The line C = 0 is invariant and
   carries a saddle equilibrium at (V ≈ 9.934, C = 0) (see find_regularization_branch), so
   the closed quadrant is NOT the basin — trajectories started exactly on C = 0 converge to
   the axis saddle instead. The trapping rectangle is
       Ω = [0, Vmax] × [0, C_trap],  C_trap^η = ((αVmax/μ − 1)/φ − O₀)/β
-  (baseline C_trap = 102.67; see trapping_capital_bound). CAUTION: earlier drafts used the
-  carrying capacity C*_max = 44.99 as the rectangle ceiling; that rectangle LEAKS (at
+  (baseline C_trap = 102.67; see trapping_scope_bound). CAUTION: earlier drafts used the
+  coefficient threshold C_Gamma = 44.99 as the rectangle ceiling; that rectangle LEAKS (at
   C = 44.99, V = Vmax, dC/dt > 0) — C_trap and C*_max are distinct constants. Proof:
   Dulac certificate (no closed orbits) + uniqueness (2a) + Poincaré–Bendixson on Ω∩{C>0}.
   See Appendix A10.
 
-COROLLARY (Scope Absorption; formerly "Lemma 2"): under the separable power-law drain
-  kernel f(O)·g(V), the pair (V*, O*) solves a β-free system, so V* is invariant in β and
-  β·C*^η is conserved. This is a reparameterization invariance of the kernel family, NOT a
-  robust empirical law: under alternative kernels (exponential, Hill) the property fails.
-  Managerial reading (intervention asymmetry): scope/coupling reduction alone cannot raise
-  equilibrium vitality; recovery-side parameters (R↑, μ↓, α↑) can. ε-dependence of the
+COROLLARY (Scope Absorption; formerly "Lemma 2"): whenever the equilibrium vector field
+  depends on scope only through O and V, the pair (V*,O*) solves a β-free system, so V* is
+  invariant in β and β·C*^η is conserved.  Hill and exponential kernels in O preserve the
+  property; explicit C, β, η, or additional-state dependence can break it.  This is a
+  reparameterization invariance, not an empirical law.  Equilibrium vitality can be moved
+  by R/δ, μ/α, φ, Vmax, ε and conditionally γ, but not by β alone. ε-dependence of the
   invariant: β·C* = 8.008 at ε = 0.1, and exactly 7.933 in the ε → 0 closed form (O* solves
   δO² + (R/Vmax)(μφ/α)O + R((μ/α)/Vmax − 1) = 0 for γ=2, η=1). See §3.8 / §4.
 
 PROPOSITION 1 (V-Nullcline): The vitality recovery curve (dV/dt = 0) is strictly decreasing
   in C. Together with Theorem 2a this gives the unique intersection with the C-nullcline.
 
-PROPOSITION 2 (Bifurcation): Under non-power-law drain kernels, varying β can produce
-  saddle-node bifurcations. Under the baseline power-law kernel, the Scope-Absorption
-  Corollary forces V* to be invariant in β, so no classical V*-crossing bifurcation exists.
-  See Appendix A8.
+PROPOSITION 2 (Boundary): changing a stipulated V-threshold classification is not a
+  dynamical bifurcation.  Within the O,V-only class, varying β cannot change V*.  A
+  β-dependent equilibrium requires a specification that contains nonabsorbed C or β
+  dependence; its bifurcation type must then be proved for that specification.
 
-PROPOSITION 3 (Carrying Capacity — a FLUX THRESHOLD, not a bifurcation): the maximum
-  sustainable career capital is
-    C*_max = ( ((R/δ)^(1/γ) − O₀) / β )^(1/η)
-  the capital level at which the depletion ratio Γ = δO^γ/R reaches 1 at FULL vitality
-  (V = Vmax). Since det J > 0 everywhere, no saddle-node/fold occurs anywhere: equilibria
-  do not "cease to exist" past C*_max. The constant separates the region where recovery at
-  full vitality can offset drain from the region where it cannot; it is NOT the trapping
-  ceiling (see trapping_capital_bound) and NOT a critical point of the flow.
+DEFINITION (Drain-coefficient threshold):
+    C_Gamma = ( ((R/δ)^(1/γ) − O₀) / β )^(1/η)
+  is the positive scope level, when it exists, at which Γ=δO^γ/R reaches 1.  It is not a
+  capacity, trapping ceiling, equilibrium-disappearance point, or sign test for
+  dV/dt.  Recovery is zero at V=Vmax, so no full-vitality balance is implied.
 
-CALIBRATION CAVEAT (regime label): the interior equilibrium satisfies
-  V* = (μ/α)(1 + φO*), so whether it falls below the stipulated threshold 0.5·Vmax is
-  governed by the ratio μ/α. At baseline μ/α = 2.0 the flip value is (μ/α)_crit ≈ 2.163
-  (8% away); across a ±2× log-uniform parameter hypercube, P(zombie | stable eq) ≈ 0.49.
-  The baseline numbers (V* ≈ 4.70, C* ≈ 32.03) are ILLUSTRATIVE, not empirical estimates.
-  See dlvt.nondimensional for the effective-parameter analysis (~6 dimensionless groups).
+CALIBRATION CAVEAT (display label): the interior equilibrium satisfies
+  V* = (μ/α)(1 + φO*), so classification against 0.5·Vmax depends on a
+  stipulated threshold and parameter choices. Report continuous V* and
+  sensitivity. No prevalence or impairment conclusion follows.
 
 Key Functions
 -----------
-carrying_capacity()             : Proposition 3 — flux threshold C*_max (not a bifurcation)
-trapping_capital_bound()        : Theorem 2c — trapping-rectangle ceiling C_trap
+drain_coefficient_threshold()   : Γ=1 coefficient threshold C_Gamma
+carrying_capacity()             : deprecated compatibility alias
+trapping_scope_bound()          : scope ceiling C_trap
+trapping_capital_bound()        : deprecated compatibility alias
 find_interior_equilibria()      : Theorem 2 — find all (V*, C*) with V*, C* > 0
 jacobian_eigenvalues()          : Theorem 2 — compute eigenvalues, classify stability
-is_zombie()                     : Definition 7 — check if V* < V_strategic
-classify_regime()               : Regime classification (sustainable, zombie, collapse-prone)
-regime_map()                    : Figure 7 — parameter-space regime classification in (β, δ)
+is_low_vitality()               : compare V* with an explicit display threshold
+classify_equilibrium()          : separate equilibrium existence from display label
 bendixson_dulac_certificate()   : Theorem 2 proof — Dulac divergence grid + trapping rectangle
 basin_of_attraction_sweep()     : Theorem 2 corroboration — 64 IC convergence test
 find_regularization_branch()    : Appendix A9 — characterize ε-regularization saddle
-estimate_bifurcation_interval() : Appendix A8 — β_crit sensitivity to ε and rtol
+estimate_bifurcation_interval() : legacy scan-window/threshold diagnostic
 
 Module Constants
 ----------------
-V_STRATEGIC_FRACTION = 0.5  : Strategic vitality threshold = 0.5 * V_max
-                              Below this, executives are classified as "zombie" (Definition 7)
+DISPLAY_THRESHOLD_FRACTION = 0.5 : illustrative display threshold only
+V_STRATEGIC_FRACTION = 0.5       : deprecated compatibility constant
 
-References
-----------
-  Bendinelli, W. (2026). Dynamic Leadership Vitality Theory: A Formal Model
-  of the Zombie-Leader Equilibrium. Manuscript submitted to The Leadership Quarterly.
 """
 
 from typing import Dict, List, Tuple, Optional
+import warnings
 import numpy as np
 from scipy.optimize import brentq
 
-from .model import complexity, impact, DEFAULT_PARAMS
+from .model import coordination_load, impact, DEFAULT_PARAMS, validate_params
 
-# Strategic vitality threshold (Definition in paper: V_strategic = 0.5 * V_max)
-# NOTE: this threshold is *stipulated*, not derived from data. At the baseline
-# calibration the equilibrium V* = 4.7025 sits only 5.9% below it; any threshold
-# fraction below 0.47 reclassifies the baseline as 'sustainable'. See §5.
-V_STRATEGIC_FRACTION = 0.5
+# Illustrative display threshold. It is stipulated, not empirically validated.
+DISPLAY_THRESHOLD_FRACTION = 0.5
+# Historical constant name retained for source compatibility through v2.x.
+V_STRATEGIC_FRACTION = DISPLAY_THRESHOLD_FRACTION
 
 
 # ── Analytical results ────────────────────────────────────────────────────────
 
-def trapping_capital_bound(p: Dict[str, float]) -> float:
-    """Capital ceiling C_trap of the forward-invariant trapping rectangle.
+def trapping_scope_bound(p: Dict[str, float]) -> float:
+    """Scope ceiling C_trap of the forward-invariant trapping rectangle.
 
-    C_trap is the unique capital level at which the C-nullcline
+    C_trap is the unique scope level at which the scope nullcline
     V_c(C) = μ·(1 + φ·O(C))/α reaches V_max:
 
         C_trap^η = ( (α·V_max/μ − 1)/φ − O₀ ) / β
@@ -139,8 +130,8 @@ def trapping_capital_bound(p: Dict[str, float]) -> float:
       rectangle* used in the global-stability proof. It also bounds every
       interior equilibrium, since dC/dt = 0 with C* > 0 forces
       V* = μ(1+φO*)/α < V_max ⟹ C* < C_trap.
-    - ``carrying_capacity`` (Proposition 3; baseline **44.99**) is the flux
-      threshold where the depletion ratio Γ = 1 at V = V_max. Earlier drafts
+    - ``drain_coefficient_threshold`` (baseline **44.99**) is the coefficient
+      threshold where the depletion ratio Γ = 1. Earlier drafts
       wrongly used it as the rectangle ceiling; that rectangle *leaks*
       (at C = 44.99, V = V_max, dC/dt > 0 — a trajectory started at
       (V, C) = (10, 40) overshoots to C ≈ 46.4 before settling).
@@ -157,35 +148,39 @@ def trapping_capital_bound(p: Dict[str, float]) -> float:
         case the C-nullcline never reaches V_max: dC/dt < 0 for all C > 0,
         no interior equilibrium exists, and no trapping ceiling is needed.
     """
+    p = validate_params(p)
     rhs = (p['alpha'] * p['Vmax'] / p['mu'] - 1.0) / p['phi'] - p['O0']
     if rhs <= 0:
         raise ValueError(
-            "Parameter regime has αVmax/μ ≤ 1+φO0; the C-nullcline never "
+            "Parameter vector has αVmax/μ ≤ 1+φO0; the scope nullcline never "
             "reaches Vmax, so no interior equilibrium exists and the "
-            "trapping ceiling is undefined (capital decays for all C > 0)."
+            "trapping ceiling is undefined (enacted scope contracts for all C > 0)."
         )
     return (rhs / p['beta']) ** (1.0 / p['eta'])
 
-def carrying_capacity(p: Dict[str, float]) -> float:
-    """Maximum sustainable career capital C*_max (Proposition 3) — a flux threshold.
 
-    C*_max is the value of C at which the depletion ratio Γ = δ·O^γ / R = 1
-    evaluated at full vitality (V = V_max): below it, recovery at full
-    vitality can offset the drain; above it, it cannot.
+def trapping_capital_bound(p: Dict[str, float]) -> float:
+    """Deprecated alias for :func:`trapping_scope_bound`."""
+    warnings.warn(
+        "trapping_capital_bound() is deprecated; use trapping_scope_bound(). "
+        "C denotes enacted leadership scope, not capital.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return trapping_scope_bound(p)
 
-    IMPORTANT (corrected interpretation): C*_max is *not* a bifurcation
-    point. det J > 0 holds everywhere, so no saddle-node/fold exists
-    anywhere in parameter or state space — equilibria do not "cease to
-    exist" past C*_max (Theorem 2a guarantees a unique interior equilibrium
-    whenever αVmax/μ > 1+φO₀). C*_max is also *not* the ceiling of the
-    trapping rectangle used in the global-stability proof; that constant is
-    C_trap (see :func:`trapping_capital_bound`; baseline 102.67 vs 44.99).
+def drain_coefficient_threshold(p: Dict[str, float]) -> float:
+    """Return the enacted-scope level at which ``delta*O(C)**gamma/R == 1``.
 
-    Formula (ε → 0 limit, η = 1):
-      C*_max = ( (R/δ)^{1/γ} − O₀ ) / β
+    This is a coefficient-ratio threshold, denoted ``C_Gamma`` in the R8
+    formal specification.  It is not a capacity, a trapping bound,
+    an equilibrium-disappearance point, or a sign test for ``dV/dt``.  In
+    particular, recovery is zero at ``V=Vmax``, so the threshold cannot mean
+    that recovery offsets drain at full vitality.
 
-    Generalised for η ≠ 1 (Proposition 3 extended):
-      C*_max = ( ((R/δ)^{1/γ} − O₀) / β )^{1/η}
+    Formula:
+
+        C_Gamma = (((R/delta)^(1/gamma) - O0) / beta)^(1/eta)
 
     Parameters
     ----------
@@ -195,125 +190,149 @@ def carrying_capacity(p: Dict[str, float]) -> float:
     Returns
     -------
     float
-        C*_max, the maximum sustainable career capital.
-        Returns 0.0 if no sustainable capacity exists (Omax ≤ O0).
+        Positive crossing level, or ``0.0`` when ``Gamma>=1`` already at
+        baseline load and therefore no positive crossing exists.
 
     Notes
     -----
-    C*_max = 0 signals an "unsustainable" regime where even zero capital
-    leads to persistent vitality drain (complete burnout is inevitable).
+    A return value of zero says nothing by itself about equilibrium
+    existence or long-run vitality.  Those require the exact residual used
+    by :func:`find_interior_equilibria`.
 
     Examples
     --------
     >>> from dlvt import make_params
     >>> p = make_params()
-    >>> cc = carrying_capacity(p)
-    >>> print(f'Maximum sustainable capital: C* = {cc:.2f}')
+    >>> c_gamma = drain_coefficient_threshold(p)
+    >>> print(f'Gamma=1 coefficient threshold: C = {c_gamma:.2f}')
     """
+    p = validate_params(p)
     Omax = (p['R'] / p['delta']) ** (1.0 / p['gamma'])
     if Omax <= p['O0']:
         return 0.0
     return max(0.0, ((Omax - p['O0']) / p['beta']) ** (1.0 / p['eta']))
 
 
+def carrying_capacity(p: Dict[str, float]) -> float:
+    """Deprecated alias for :func:`drain_coefficient_threshold`.
+
+    The historical name encoded an incorrect ecological interpretation.
+    It remains for one compatibility cycle while public callers migrate to
+    the semantically accurate function name.
+    """
+    warnings.warn(
+        "carrying_capacity() is deprecated; use "
+        "drain_coefficient_threshold(). The returned value is the Gamma=1 "
+        "coefficient threshold, not a capacity or trapping bound.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return drain_coefficient_threshold(p)
+
+
 def find_interior_equilibria(p: Dict[str, float], C_max: Optional[float] = None,
                             n_scan: int = 8000
                             ) -> List[Dict[str, any]]:
-    """Find all interior equilibria (V*, C*) with V*, C* > 0 (Theorem 2).
+    """Return the unique interior equilibrium, if it exists.
 
-    Solves the system:
-      dV/dt = 0: recovery (V*) = drain (V*, C*)
-      dC/dt = 0: impact (V*, C*) = depreciation
+    The scope nullcline gives
 
-    Algorithm: substitute V* from the dC/dt = 0 nullcline into the
-    dV/dt = 0 condition and scan for sign changes using Brent's method.
+        V_c(O) = (mu/alpha) * (1 + phi*O).
+
+    Substitution into the vitality equation produces a scalar residual
+
+        F(O) = R*(1 - V_c(O)/Vmax)
+               - delta*O**gamma*V_c(O)/(V_c(O) + eps).
+
+    ``F`` is strictly decreasing for positive parameters.  An interior
+    equilibrium exists if and only if ``F(O0) > 0``; when it exists, its
+    load coordinate is the unique root on ``(O0, O_trap)``, where
+
+        O_trap = (alpha*Vmax/mu - 1)/phi.
+
+    Solving in ``O`` avoids the two legacy scan failures: roots below the
+    hard-coded ``C=0.01`` floor and valid roots above ``0.999*Vmax``.
 
     Parameters
     ----------
     p : Dict[str, float]
         Parameter dictionary.
     C_max : float, optional
-        Upper bound for capital scan. Default ``None`` derives the bound
-        analytically: any interior equilibrium satisfies
-        V* = μ(1+φO*)/α < V_max, hence C* < C_trap
-        (see :func:`trapping_capital_bound`), so the scan uses
-        ``1.05 · C_trap``. This bound scales as 1/β, exactly like
-        C*(β) = (β·C*)/β itself, so no equilibrium can fall outside the
-        window at any β. A *fixed* default (120.0 in earlier releases)
-        silently missed the equilibrium for β < 0.066 — C*(β) ≈ 8.008/β
-        exceeds 120 there — causing :func:`classify_regime` to mislabel
-        those regimes as 'collapse-prone'. Pass an explicit value only if
-        you deliberately want a restricted window.
+        Optional deliberate reporting window.  The equilibrium is solved
+        analytically first and omitted only when its mapped ``C*`` exceeds
+        this value.  ``None`` never truncates a valid equilibrium.
     n_scan : int, optional
-        Number of scan points (more = fewer missed roots), default 8000.
+        Deprecated compatibility argument.  The monotone root algorithm
+        does not scan and therefore ignores this value.
 
     Returns
     -------
     List[Dict[str, any]]
         List of equilibrium points. Each dict contains:
-          - 'C': equilibrium capital C*
+          - 'C': equilibrium enacted scope C*
           - 'V': equilibrium vitality V*
-          - 'O': equilibrium complexity O*
+          - 'O': equilibrium experienced coordination load O*
           - 'I': equilibrium impact I*
           - 'stable': bool, True if locally asymptotically stable
           - 'eigenvalues': ndarray of Jacobian eigenvalues
-          - 'zombie': bool, True if V* < V_strategic
 
-    Notes
-    -----
-    The algorithm performs a coarse scan over [0.01, C_max] and refines
-    at each sign change. Uniqueness is guaranteed analytically (the
-    residual Φ is strictly decreasing along the C-nullcline — see the
-    module header, Theorem 2a), so at most one root exists; the scan is
-    retained as a defensive check that would surface any violation.
+    An empty list means that the exact existence condition fails or that an
+    explicitly supplied ``C_max`` excludes the otherwise valid root.  It
+    does not mean that the drain-coefficient threshold is zero.
     """
-    if C_max is None:
-        try:
-            C_max = 1.05 * trapping_capital_bound(p)
-        except ValueError:
-            # αVmax/μ ≤ 1+φO0: the C-nullcline sits at/above Vmax for all
-            # C ≥ 0, so dC/dt < 0 everywhere and no interior equilibrium
-            # exists. Return the empty list directly.
-            return []
-    def V_from_C(Cs):
-        """V* from dC/dt = 0: α·I* = μ·C*  ⟹  V* = μ·(1 + φ·O) / α"""
-        Os = p['O0'] + p['beta'] * Cs**p['eta']
-        return p['mu'] * (1.0 + p['phi'] * Os) / p['alpha']
+    del n_scan  # retained only for backward-compatible call signatures
+    p = validate_params(p)
 
-    def residual(Cs):
-        if Cs <= 0:
-            return 1e10
-        Vs = V_from_C(Cs)
-        if Vs <= 0 or Vs >= p['Vmax']:
-            return 1e10
-        Os = p['O0'] + p['beta'] * Cs**p['eta']
-        rec = p['R'] * (1.0 - Vs / p['Vmax'])
-        drn = p['delta'] * Os**p['gamma'] * Vs / (Vs + p['eps'])
-        return rec - drn
+    q = p['mu'] / p['alpha']
 
-    C_scan = np.linspace(0.01, C_max, n_scan)
-    res    = np.array([residual(c) for c in C_scan])
+    def vitality_on_scope_nullcline(O: float) -> float:
+        return q * (1.0 + p['phi'] * O)
 
-    equilibria = []
-    for i in range(len(res) - 1):
-        if res[i] * res[i + 1] < 0:
-            try:
-                Cs = brentq(residual, C_scan[i], C_scan[i + 1])
-                Vs = V_from_C(Cs)
-                Os = complexity(Cs, p)
-                if 0 < Vs < 0.999 * p['Vmax'] and Cs > 0:
-                    eigvals, stable = jacobian_eigenvalues(Vs, Cs, p)
-                    equilibria.append(dict(
-                        C=Cs, V=Vs, O=Os,
-                        I=impact(Vs, Cs, Os, p),
-                        stable=stable,
-                        eigenvalues=eigvals,
-                        zombie=is_zombie(Vs, p),
-                    ))
-            except Exception:
-                pass
+    def residual_in_load(O: float) -> float:
+        V = vitality_on_scope_nullcline(O)
+        recovery = p['R'] * (1.0 - V / p['Vmax'])
+        drain = p['delta'] * O**p['gamma'] * V / (V + p['eps'])
+        return recovery - drain
 
-    return equilibria
+    F_at_baseline = residual_in_load(p['O0'])
+    V_at_baseline = vitality_on_scope_nullcline(p['O0'])
+    residual_scale = max(
+        1.0,
+        abs(p['R'] * (1.0 - V_at_baseline / p['Vmax'])),
+        abs(
+            p['delta'] * p['O0']**p['gamma'] * V_at_baseline
+            / (V_at_baseline + p['eps'])
+        ),
+    )
+    # At the admissibility boundary F(O0)=0, roundoff from a previously
+    # computed root can be a few ulps positive. Do not return C*=0 as an
+    # "interior" equilibrium; genuinely boundary-near positive roots remain
+    # detectable above this scale-aware floating-point tolerance.
+    existence_tolerance = 64.0 * np.finfo(float).eps * residual_scale
+    if F_at_baseline <= existence_tolerance:
+        return []
+
+    O_trap = (p['alpha'] * p['Vmax'] / p['mu'] - 1.0) / p['phi']
+    if O_trap <= p['O0']:
+        # Defensive guard: F(O0)>0 already implies O_trap>O0 for a valid
+        # positive parameter vector.
+        return []
+
+    O_star = brentq(residual_in_load, p['O0'], O_trap)
+    C_star = ((O_star - p['O0']) / p['beta']) ** (1.0 / p['eta'])
+    if C_max is not None and C_star > C_max:
+        return []
+
+    V_star = vitality_on_scope_nullcline(O_star)
+    eigvals, stable = jacobian_eigenvalues(V_star, C_star, p)
+    return [dict(
+        C=C_star,
+        V=V_star,
+        O=O_star,
+        I=impact(V_star, C_star, O_star, p),
+        stable=stable,
+        eigenvalues=eigvals,
+    )]
 
 
 def jacobian_eigenvalues(V: float, C: float,
@@ -337,7 +356,7 @@ def jacobian_eigenvalues(V: float, C: float,
     V : float
         Vitality at the equilibrium.
     C : float
-        Career capital at the equilibrium.
+        Enacted leadership scope at the equilibrium.
     p : Dict[str, float]
         Parameter dictionary.
 
@@ -353,7 +372,8 @@ def jacobian_eigenvalues(V: float, C: float,
     -----
     Uses numpy.linalg.eigvals for robust computation.
     """
-    O    = complexity(C, p)
+    p = validate_params(p)
+    O    = coordination_load(C, p)
     eps  = p['eps']
     dOdC = p['beta'] * p['eta'] * max(C, 1e-10)**(p['eta'] - 1)
 
@@ -374,50 +394,135 @@ def jacobian_eigenvalues(V: float, C: float,
     return eigvals, stable
 
 
-def is_zombie(V_star: float, p: Dict[str, float]) -> bool:
-    """Return True if V* < V_strategic (Definition 7 of the paper).
+def is_low_vitality(
+    V_star: float,
+    p: Dict[str, float],
+    threshold_fraction: float = DISPLAY_THRESHOLD_FRACTION,
+) -> bool:
+    """Classify continuous equilibrium vitality against an explicit threshold.
 
-    A "zombie" equilibrium is one where the leader maintains capital-building
-    activity but with chronically insufficient energy. At these equilibria,
-    the executive is perpetually exhausted and cannot perform strategic work.
+    The threshold is calibrational, not derived by the ODE.  Callers should
+    report ``V_star`` itself and perform sensitivity analysis over plausible
+    threshold fractions.
 
     Parameters
     ----------
     V_star : float
         Equilibrium vitality.
     p : Dict[str, float]
-        Parameter dictionary (must contain 'Vmax').
+        Parameter dictionary containing ``Vmax``.
+    threshold_fraction : float, optional
+        Fraction of ``Vmax`` used for classification.  The default ``0.5``
+        is illustrative and retained for baseline compatibility.
 
     Returns
     -------
     bool
-        True if V_star < V_strategic, False otherwise.
+        True when ``V_star < threshold_fraction*Vmax``.
 
     Notes
     -----
-    V_strategic = V_STRATEGIC_FRACTION * V_max, where V_STRATEGIC_FRACTION=0.5.
-    This threshold reflects the minimum vitality for effective strategic thinking.
+    This function does not assert that the selected threshold has empirical
+    validity.
     """
-    return V_star < V_STRATEGIC_FRACTION * p['Vmax']
+    p = validate_params(p)
+    if not 0.0 < threshold_fraction < 1.0:
+        raise ValueError("threshold_fraction must lie strictly between 0 and 1.")
+    return V_star < threshold_fraction * p['Vmax']
+
+
+def is_zombie(V_star: float, p: Dict[str, float]) -> bool:
+    """Deprecated compatibility alias for :func:`is_low_vitality`."""
+    warnings.warn(
+        "is_zombie() is deprecated; use is_low_vitality() with an explicit "
+        "threshold_fraction and report continuous V*.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return is_low_vitality(V_star, p)
 
 
 # ── Regime map ────────────────────────────────────────────────────────────────
 
-def classify_regime(p: Dict[str, float], C_max: Optional[float] = None) -> str:
-    """Classify a parameter combination into a leadership regime.
+def classify_equilibrium(
+    p: Dict[str, float],
+    C_max: Optional[float] = None,
+    threshold_fraction: float = DISPLAY_THRESHOLD_FRACTION,
+) -> Dict[str, object]:
+    """Return an explicit equilibrium/existence classification.
 
-    Determines whether a set of parameter values leads to sustainable,
-    zombie, or collapse-prone leadership outcomes.
+    The result separates mathematical existence from a threshold-dependent
+    substantive label.  ``threshold_fraction`` is always returned so the
+    classification cannot be mistaken for a structural property. ``C_max``
+    is a reporting window only: it never changes mathematical existence. If
+    it excludes the exact equilibrium, the result retains that equilibrium
+    and uses status ``equilibrium-outside-reporting-window``.
+    """
+    if not 0.0 < threshold_fraction < 1.0:
+        raise ValueError("threshold_fraction must lie strictly between 0 and 1.")
+    # Mathematical existence must not depend on a caller's reporting window.
+    # Solve the exact problem first; apply C_max only to reporting metadata.
+    eqs = find_interior_equilibria(p)
+    stable_eqs = [eq for eq in eqs if eq['stable']]
+    if not stable_eqs:
+        return {
+            'status': 'no-stable-interior-equilibrium',
+            'mathematical_status': 'no-stable-interior-equilibrium',
+            'exists': False,
+            'equilibrium': None,
+            'threshold_fraction': threshold_fraction,
+            'reporting_C_max': C_max,
+            'within_reporting_window': None,
+        }
+
+    mathematical_eq = min(stable_eqs, key=lambda item: item['C'])
+    below = is_low_vitality(mathematical_eq['V'], p, threshold_fraction)
+    eq = dict(mathematical_eq)
+    within_reporting_window = C_max is None or eq['C'] <= C_max
+    eq.update(
+        low_vitality=below,
+        zombie=below,  # deprecated compatibility key through v2.x
+        threshold_fraction=threshold_fraction,
+        within_reporting_window=within_reporting_window,
+    )
+    return {
+        'status': (
+            'low-vitality' if below else 'above-threshold'
+        ) if within_reporting_window else 'equilibrium-outside-reporting-window',
+        'mathematical_status': 'low-vitality' if below else 'above-threshold',
+        'exists': True,
+        'equilibrium': eq,
+        'V_star': eq['V'],
+        'C_star': eq['C'],
+        'O_star': eq['O'],
+        'threshold_fraction': threshold_fraction,
+        'threshold_value': threshold_fraction * p['Vmax'],
+        'reporting_C_max': C_max,
+        'within_reporting_window': within_reporting_window,
+    }
+
+
+def classify_regime(
+    p: Dict[str, float],
+    C_max: Optional[float] = None,
+    threshold_fraction: float = DISPLAY_THRESHOLD_FRACTION,
+) -> str:
+    """Return legacy regime labels for backward compatibility.
+
+    New code should use :func:`classify_equilibrium`, which separates
+    equilibrium existence from threshold-sensitive interpretation.
 
     Parameters
     ----------
     p : Dict[str, float]
         Parameter dictionary.
     C_max : float, optional
-        Maximum capital for equilibrium search. Default ``None`` uses the
+        Maximum enacted scope for equilibrium search. Default ``None`` uses the
         analytical bound (see :func:`find_interior_equilibria`), which is
-        valid for every β. Fixed values silently mislabel small-β regimes
+        valid for every β. Fixed values can mislabel small-β cases
         as 'collapse-prone' when C*(β) ∝ 1/β exceeds the window.
+    threshold_fraction : float, optional
+        Explicit vitality threshold passed to :func:`classify_equilibrium`.
 
     Returns
     -------
@@ -429,34 +534,40 @@ def classify_regime(p: Dict[str, float], C_max: Optional[float] = None) -> str:
 
     Notes
     -----
-    Priority: uses the lowest-capital stable equilibrium if multiple exist.
-    This reflects the "dominant" organizational outcome.
+    ``'zombie'`` maps from ``'low-vitality'`` and ``'sustainable'`` maps
+    from ``'above-threshold'``.  ``'collapse-prone'`` means only that no
+    stable interior equilibrium was returned; it does not prove burnout or
+    collapse.
     """
-    cc = carrying_capacity(p)
-    if cc <= 0:
+    warnings.warn(
+        "classify_regime() is deprecated; use classify_equilibrium(), which "
+        "separates equilibrium existence from an explicit display threshold.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    result = classify_equilibrium(
+        p,
+        C_max=C_max,
+        threshold_fraction=threshold_fraction,
+    )
+    if result['status'] == 'no-stable-interior-equilibrium':
         return 'collapse-prone'
-    eqs = find_interior_equilibria(p, C_max=C_max)
-    stable_eqs = [eq for eq in eqs if eq['stable']]
-    if not stable_eqs:
-        return 'collapse-prone'
-    # Use the first (lowest C*) stable equilibrium
-    eq = stable_eqs[0]
-    return 'zombie' if eq['zombie'] else 'sustainable'
+    return 'zombie' if result['mathematical_status'] == 'low-vitality' else 'sustainable'
 
 
 def regime_map(beta_range: np.ndarray, delta_range: np.ndarray,
                base_params: Optional[Dict[str, float]] = None
                ) -> np.ndarray:
-    """Compute the leadership regime map over a (β, δ) grid (Figure 7).
+    """Compute deprecated legacy labels over a ``(beta, delta)`` grid.
 
-    Scans a 2-D parameter space and classifies each point into a regime.
-    This generates the phase diagram showing how leadership sustainability
-    depends on capital-complexity coupling (β) and energetic cost (δ).
+    This compatibility API applies an illustrative threshold and returns the
+    historical string labels. New analyses should use
+    :func:`classify_equilibrium` and retain continuous equilibrium outputs.
 
     Parameters
     ----------
     beta_range : ndarray
-        Values of β (capital-complexity coupling), typically [0.01, 1.0].
+        Values of scope-to-load coupling β.
     delta_range : ndarray
         Values of δ (energetic cost coefficient), typically [0.001, 0.1].
     base_params : Optional[Dict[str, float]]
@@ -466,7 +577,7 @@ def regime_map(beta_range: np.ndarray, delta_range: np.ndarray,
     Returns
     -------
     regimes : ndarray, shape (len(delta_range), len(beta_range)), dtype=object
-        Grid of regime classifications.
+        Grid of deprecated compatibility classifications.
         regimes[i, j] = classify_regime(p) for p with β=beta_range[j], δ=delta_range[i].
         Values: 'sustainable', 'zombie', or 'collapse-prone'.
 
@@ -486,6 +597,7 @@ def regime_map(beta_range: np.ndarray, delta_range: np.ndarray,
     """
     if base_params is None:
         base_params = DEFAULT_PARAMS.copy()
+    base_params = validate_params(base_params)
 
     regimes = np.empty((len(delta_range), len(beta_range)), dtype=object)
     for i, dv in enumerate(delta_range):
@@ -506,14 +618,18 @@ def estimate_bifurcation_interval(
     V_strategic: Optional[float] = None,
     C_max: Optional[float] = None,
 ) -> Dict[str, any]:
-    """Estimate the critical-beta interval, exposing regularization sensitivity.
+    """Run the legacy critical-beta crossing diagnostic.
+
+    The historical function and ``V_strategic`` argument names are retained
+    for compatibility. The supplied value is an illustrative display
+    threshold, not a strategic-performance threshold or dynamical boundary.
 
     This function replaces the false-precision ``beta_crit ≈ 0.1015`` claim in
     earlier drafts of Appendix A8. It answers two honest questions instead of
     one fake-precise one:
 
     (1) *Does* the equilibrium vitality :math:`V^*(\\beta)` cross the
-        strategic threshold :math:`V_{\\mathrm{strategic}}` anywhere in the
+        display threshold :math:`V_{\\mathrm{display}}` anywhere in the
         sweep? If Lemma 2 (scope-absorption) applies — i.e.\\ the drain
         kernel is multiplicative power-law in :math:`O = O_0 + \\beta C^\\eta`
         and :math:`V^*` depends on :math:`\\beta` only through :math:`\\beta
@@ -544,7 +660,8 @@ def estimate_bifurcation_interval(
     n_beta : int, optional
         Number of beta sample points in each sweep. Default: ``400``.
     V_strategic : float, optional
-        Strategic threshold. Defaults to ``V_STRATEGIC_FRACTION * Vmax``.
+        Historical argument name for the display threshold. Defaults to
+        ``DISPLAY_THRESHOLD_FRACTION * Vmax``.
     C_max : float, optional
         Upper bound for the equilibrium scan. Default ``None`` uses the
         per-β analytical bound C_trap ∝ 1/β (see
@@ -597,12 +714,13 @@ def estimate_bifurcation_interval(
     >>> round(result['v_star_invariant'], 4)
     4.7025
     """
+    base_params = validate_params(base_params)
     if eps_grid is None:
         eps_grid = [0.01, 0.05, 0.1, 0.2]
     if n_scan_grid is None:
         n_scan_grid = [8000, 16000]
     if V_strategic is None:
-        V_strategic = V_STRATEGIC_FRACTION * base_params['Vmax']
+        V_strategic = DISPLAY_THRESHOLD_FRACTION * base_params['Vmax']
 
     beta_min, beta_max = beta_range
     betas = np.linspace(beta_min, beta_max, n_beta)
@@ -616,8 +734,7 @@ def estimate_bifurcation_interval(
             eqs = find_interior_equilibria(p_try, C_max=C_max, n_scan=n_scan)
             stable = [e for e in eqs if e['stable']]
             if stable:
-                # Take the equilibrium on the dominant (high-C) branch, which
-                # is the sustainable/zombie branch of Figure 8.
+                # Take the equilibrium on the historical high-C scan branch.
                 stable.sort(key=lambda e: e['C'])
                 curve.append((b, stable[-1]['V'], stable[-1]['C']))
         return curve
@@ -696,7 +813,7 @@ def estimate_bifurcation_interval(
             float(max(all_crits)),
         )
         diagnostic = (
-            f"V*(β) crosses V_strategic={V_strategic:.3f}. Numerical estimates "
+            f"V*(β) crosses display threshold={V_strategic:.3f}. Numerical estimates "
             f"of β_crit across the (eps, n_scan) grid span "
             f"[{beta_crit_interval[0]:.4f}, {beta_crit_interval[1]:.4f}]; "
             f"report this interval, not a point."
@@ -708,7 +825,7 @@ def estimate_bifurcation_interval(
                 f"V*(β) is numerically constant at V*={v_star_invariant:.4f} "
                 f"across the sweep (scope-absorption / Lemma 2: β·C* is "
                 f"invariant at {baseline_bC:.4f}). "
-                f"{'V* < V_strategic' if v_star_invariant < V_strategic else 'V* ≥ V_strategic'} "
+                f"{'V* below threshold' if v_star_invariant < V_strategic else 'V* at/above threshold'} "
                 f"for all β, so β_crit as a V*-crossing does not exist. Any "
                 f"previously reported 'critical β' for this calibration was a "
                 f"scan-window artifact of a too-small C_max (the equilibrium "
@@ -717,9 +834,9 @@ def estimate_bifurcation_interval(
             )
         else:
             diagnostic = (
-                f"V*(β) does not cross V_strategic={V_strategic:.3f} in "
+                f"V*(β) does not cross display threshold={V_strategic:.3f} in "
                 f"β ∈ [{beta_min}, {beta_max}], but is not numerically "
-                f"constant either. Verify parameter regime before interpreting."
+                f"constant either. Verify the parameter configuration before interpreting."
             )
 
     return {
@@ -738,17 +855,16 @@ def find_regularization_branch(
     p: Dict[str, float],
     near_zero_threshold: Optional[float] = None,
 ) -> Dict[str, any]:
-    """Enumerate *all* equilibria and look for an ε-regularization ``near-zero'' branch.
+    """Audit the number and magnitude of regularized vitality roots.
 
     The smooth barrier $V/(V+\\varepsilon)$ used in the vitality ODE is a
-    positive-invariance trick: without it, strong drain regimes would push
+    positive-invariance trick: without it, strong-drain configurations would push
     $V$ across zero into the unphysical negative half-plane. A careful
     reviewer may reasonably worry that the regularization introduces a
-    *spurious* second equilibrium branch at small positive $V$, of the form
-    $V^* \\approx R\\varepsilon/(\\delta O^\\gamma)$, that has no correlate in
-    the $\\varepsilon\\to 0$ limit. This function audits that concern by
-    explicitly enumerating all equilibria of the full 2D system and
-    reporting any with $V^* < $ ``near_zero_threshold''.
+    *spurious second* positive root. This function audits root count and root
+    magnitude separately. A unique positive axis root may legitimately be
+    arbitrarily small under strong drain; small magnitude is not a violation
+    of the one-positive-root result in Appendix A9.
 
     Structure of the enumeration:
 
@@ -760,15 +876,15 @@ def find_regularization_branch(
 
     2. **Interior equilibria.** Delegated to
        :func:`find_interior_equilibria`, which parametrizes along the
-       $\\dot C = 0$ nullcline $V_c(C) = \\mu(1+\\varphi O)/\\alpha$. Because
+       $\\dot C = 0$ nullcline $V_c(C) = \\mu(1+\\phi O)/\\alpha$. Because
        $V_c \\geq \\mu/\\alpha$ identically, the interior branch is *bounded
        away from zero* by construction: no interior equilibrium can have
        $V^* < \\mu/\\alpha$ (at baseline, $V^* \\geq 2$).
 
-    3. **Near-zero filter.** Any equilibrium with $V^* <$
-       ``near_zero_threshold`` is flagged as ``near-zero''. By default the
-       threshold is $\\min(\\mu/\\alpha, 1.0)$, which is a safe lower bound
-       below the minimum possible interior $V^*$.
+    3. **Magnitude report.** Equilibria with $V^* <$
+       ``near_zero_threshold`` are reported descriptively. By default the
+       threshold is $\\min(\\mu/\\alpha, 1.0)$. The threshold is not a
+       theorem boundary and does not affect the structural audit.
 
     Parameters
     ----------
@@ -789,11 +905,15 @@ def find_regularization_branch(
             (``saddle``, ``stable node/focus``, ``unstable node/focus``).
         - ``interior_equilibria`` : List[Dict]
             All interior equilibria from :func:`find_interior_equilibria`.
+        - ``small_magnitude_equilibria`` : List[Dict]
+            Equilibria below the reporting threshold. A unique small axis
+            root is mathematically legitimate.
+        - ``unexpected_branch`` : Optional[Dict]
+            Structural violation, if one is found: a second positive axis
+            root or an interior root below its analytical lower bound.
         - ``near_zero_branch`` : Optional[Dict]
-            The near-zero equilibrium if one exists, else ``None``.
-            At baseline DLVT parameters this is ``None``: the axis root
-            lives near $V_{\\max}$ (not near 0), and the interior branch
-            is pinned at $V^* = \\mu(1+\\varphi O^*)/\\alpha \\geq \\mu/\\alpha$.
+            Deprecated compatibility alias for ``unexpected_branch``. It no
+            longer treats a unique small axis root as an unexpected branch.
         - ``interior_V_lower_bound`` : float
             The analytical lower bound $\\mu/\\alpha$ on any interior $V^*$.
         - ``quadratic_positive_root_count`` : int
@@ -804,17 +924,18 @@ def find_regularization_branch(
 
     Notes
     -----
-    The appendix section `A7` in the main manuscript derives these facts
+    Appendix A9 derives these facts
     formally. The function exists as defensive infrastructure: it makes
     the ``no spurious branch'' claim *executable*, so any future parameter
     change that would reintroduce a near-zero equilibrium will be caught by
     the pinning test in ``code/tests/test_analysis.py``.
     """
+    p = validate_params(p)
     if near_zero_threshold is None:
         near_zero_threshold = min(p['mu'] / p['alpha'], 1.0)
 
     # -- 1. Axis equilibrium ---------------------------------------------------
-    O0_eff = p['O0']  # complexity at C=0
+    O0_eff = p['O0']  # experienced coordination load at C=0
     a = p['R'] / p['Vmax']
     b = -(p['R'] - p['R'] * p['eps'] / p['Vmax'] - p['delta'] * O0_eff**p['gamma'])
     c = -p['R'] * p['eps']
@@ -848,23 +969,44 @@ def find_regularization_branch(
     # -- 2. Interior equilibria ------------------------------------------------
     interior = find_interior_equilibria(p, n_scan=12000)
 
-    # -- 3. Near-zero filter ---------------------------------------------------
-    candidates: List[Dict[str, any]] = []
+    # -- 3. Magnitude report and structural audit -----------------------------
+    small_magnitude: List[Dict[str, any]] = []
     if axis_eq is not None and axis_eq['V'] < near_zero_threshold:
-        candidates.append({**axis_eq, 'source': 'axis'})
+        small_magnitude.append({**axis_eq, 'source': 'axis'})
     for eq in interior:
         if eq['V'] < near_zero_threshold:
-            candidates.append({**eq, 'source': 'interior'})
-
-    near_zero_branch = candidates[0] if candidates else None
+            small_magnitude.append({**eq, 'source': 'interior'})
 
     interior_V_lower_bound = p['mu'] / p['alpha']
+    unexpected_branch: Optional[Dict[str, any]] = None
+    if len(pos_roots) != 1:
+        unexpected_branch = {
+            'source': 'axis',
+            'reason': 'axis-positive-root-count',
+            'positive_root_count': len(pos_roots),
+        }
+    else:
+        for eq in interior:
+            if eq['V'] < interior_V_lower_bound - 1e-10:
+                unexpected_branch = {
+                    **eq,
+                    'source': 'interior',
+                    'reason': 'below-interior-analytical-bound',
+                }
+                break
 
-    if near_zero_branch is None:
+    if unexpected_branch is None:
         axis_v_str = f"{axis_eq['V']:.3f}" if axis_eq is not None else "n/a"
         axis_cls_str = axis_eq['classification'] if axis_eq is not None else 'absent'
+        magnitude_note = (
+            f" {len(small_magnitude)} equilibrium/equilibria fall below the "
+            f"descriptive magnitude threshold {near_zero_threshold:.3f}; "
+            f"this does not violate the unique-root result."
+            if small_magnitude else ""
+        )
         diagnostic = (
-            f"No ε-regularization near-zero branch detected. "
+            f"Regularization structure is valid: exactly one positive axis root "
+            f"and no interior root below its analytical bound. "
             f"Interior V* is bounded below by μ/α = {interior_V_lower_bound:.3f} "
             f"(by the C-isocline V_c(C) = μ(1+φO)/α). "
             f"The C=0 axis equilibrium sits at V ≈ {axis_v_str} "
@@ -872,21 +1014,24 @@ def find_regularization_branch(
             f"The axis V-isocline quadratic has exactly "
             f"{len(pos_roots)} positive root(s); its product-of-roots is "
             f"-ε·Vmax = {-p['eps'] * p['Vmax']:.3f}, guaranteeing a single "
-            f"positive root for any ε > 0. See Appendix A7."
+            f"positive root for any ε > 0. See Appendix A9."
+            f"{magnitude_note}"
         )
     else:
         diagnostic = (
-            f"Near-zero equilibrium candidate detected at V ≈ "
-            f"{near_zero_branch['V']:.4f}, C ≈ {near_zero_branch['C']:.4f} "
-            f"(source: {near_zero_branch['source']}). This violates the "
-            f"expected structure documented in Appendix A7 and must be "
-            f"investigated — verify ε, δ, γ, and the V-isocline analysis."
+            f"Unexpected regularization structure detected "
+            f"({unexpected_branch['reason']}, source: "
+            f"{unexpected_branch['source']}). See Appendix A9 and verify the "
+            f"root enumeration and V-isocline analysis."
         )
 
     return {
         'axis_equilibrium': axis_eq,
         'interior_equilibria': interior,
-        'near_zero_branch': near_zero_branch,
+        'small_magnitude_equilibria': small_magnitude,
+        'unexpected_branch': unexpected_branch,
+        'near_zero_branch': unexpected_branch,
+        'regularization_structure_valid': unexpected_branch is None,
         'interior_V_lower_bound': float(interior_V_lower_bound),
         'quadratic_positive_root_count': len(pos_roots),
         'diagnostic': diagnostic,
@@ -915,8 +1060,8 @@ def bendixson_dulac_certificate(
 
     .. math::
         \\frac{\\partial (Bg)}{\\partial C}
-        = -\\frac{\\alpha V \\varphi \\,(\\beta \\eta C^{\\eta-1})}
-               {(1+\\varphi O)^2}
+        = -\\frac{\\alpha V \\phi \\,(\\beta \\eta C^{\\eta-1})}
+               {(1+\\phi O)^2}
         < 0
 
     for every $(V, C)$ with $V > 0$ and $C > 0$. By the Bendixson–Dulac
@@ -930,11 +1075,11 @@ def bendixson_dulac_certificate(
 
     .. math::
         C_{\\text{trap}}^\\eta =
-        \\frac{(\\alpha V_{\\max}/\\mu - 1)/\\varphi - O_0}{\\beta},
+        \\frac{(\\alpha V_{\\max}/\\mu - 1)/\\phi - O_0}{\\beta},
 
-    which is the unique $C$ at which $\\mu(1 + \\varphi O(C))/\\alpha =
+    which is the unique $C$ at which $\\mu(1 + \\phi O(C))/\\alpha =
     V_{\\max}$. For any $C > C_{\\text{trap}}$ and any $V \\in [0, V_{\\max}]$,
-    we have $\\dot C = C(\\alpha V/(1+\\varphi O) - \\mu) < 0$, so the
+    we have $\\dot C = C(\\alpha V/(1+\\phi O) - \\mu) < 0$, so the
     rectangle is a trap.
 
     Parameters
@@ -959,9 +1104,10 @@ def bendixson_dulac_certificate(
         - ``dc_dt_above_c_trap_is_negative`` : bool, sanity-check the trap.
         - ``diagnostic`` : str
     """
+    p = validate_params(p)
     # Analytical C_trap from the α V/(1+φO) = μ threshold at V = Vmax.
     # With general η: C_trap^η · β = (αVmax/μ - 1)/φ - O0.
-    c_trap = trapping_capital_bound(p)
+    c_trap = trapping_scope_bound(p)
 
     C_hi = C_trap_safety * c_trap
     # Skip V=0 and C=0 edges — the Dulac function has a removable singularity
@@ -1023,8 +1169,8 @@ def basin_of_attraction_sweep(
     Bendixson–Dulac + Poincaré–Bendixson in Appendix A10. It is
     intentionally redundant with the theorem: the theorem rules out
     closed orbits and forces every bounded trajectory in
-    $\\Omega \\cap \\{C > 0\\}$ to converge to the interior zombie
-    equilibrium; this function confirms that no numerical artifacts
+    $\\Omega \\cap \\{C > 0\\}$ to converge to the interior equilibrium;
+    this function confirms that no numerical artifacts
     (stiff-step rejections, basin boundaries, etc.) defeat the prediction.
 
     Parameters
@@ -1038,7 +1184,7 @@ def basin_of_attraction_sweep(
         Integration horizon. Default 600 time units — several
         e-folding times at baseline.
     tol : float
-        Tolerance for declaring ``converged to the interior zombie'';
+        Tolerance for declaring convergence to the interior equilibrium;
         the trajectory must land within ``tol`` of the target in both
         V and C.
 
@@ -1046,13 +1192,15 @@ def basin_of_attraction_sweep(
     -------
     Dict[str, any]
         Keys:
-        - ``zombie_target`` : (V*, C*) tuple
+        - ``zombie_target`` : deprecated compatibility key for the
+          equilibrium-target tuple
         - ``n_total`` : int
         - ``n_converged`` : int
         - ``max_final_error`` : float, max component-wise error at t=T
         - ``non_converged`` : list of (V0, C0) tuples that failed
         - ``diagnostic`` : str
     """
+    p = validate_params(p)
     # Import here to avoid circular/partial imports at module load.
     from scipy.integrate import solve_ivp
     from .model import dlvt_system
@@ -1066,7 +1214,7 @@ def basin_of_attraction_sweep(
     if V0_grid is None:
         V0_grid = list(np.linspace(0.1, p['Vmax'], 8))
     if C0_grid is None:
-        C_upper = max(1.0, 2.0 * carrying_capacity(p))
+        C_upper = max(1.0, 2.0 * drain_coefficient_threshold(p))
         C0_grid = list(np.linspace(0.5, C_upper, 8))
 
     n_total = 0
@@ -1092,12 +1240,12 @@ def basin_of_attraction_sweep(
 
     diagnostic = (
         f"Basin sweep: {n_conv}/{n_total} initial conditions converged to "
-        f"the interior zombie (V*, C*) ≈ ({target[0]:.4f}, {target[1]:.4f}) "
+        f"the interior equilibrium (V*, C*) ≈ ({target[0]:.4f}, {target[1]:.4f}) "
         f"within tol={tol}. Max final error: {max_err:.3e}. "
         f"{'All trajectories converge (numerical corroboration of Theorem 2).' if n_conv == n_total else 'NON-CONVERGENT trajectories detected — investigate.'}"
     )
     return {
-        'zombie_target': target,
+        'zombie_target': target,  # deprecated compatibility key through v2.x
         'n_total': n_total,
         'n_converged': n_conv,
         'max_final_error': max_err,

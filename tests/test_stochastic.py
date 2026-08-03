@@ -87,7 +87,7 @@ def test_persistence_degrades_monotonically_with_noise():
     hi = attractor_persistence(p, sigma_V=0.5, n_paths=10, T=200.0,
                                burn_in=100.0)
     assert lo["in_band_fraction"] >= hi["in_band_fraction"]
-    # Even at sigma_V=0.5 (10% of Vmax per unit time) no path collapses.
+    # Even at sigma_V=0.5 (10% of Vmax per unit time), paths remain positive.
     assert hi["escape_fraction"] == 0.0
 
 
@@ -113,6 +113,16 @@ def equilibrium_panel():
         obs_noise=0.02, seed=7, sigma_V=0.02,
         V0_range=(V_STAR - 0.5, V_STAR + 0.5),
         C0_range=(C_STAR - 3.0, C_STAR + 3.0),
+    )
+
+
+@pytest.fixture(scope="module")
+def incomplete_panel():
+    """Transient-rich panel with simplified missing waves and dropout."""
+    return synthesize_panel(
+        make_params(), n_leaders=10, n_waves=12, wave_dt=2.0,
+        obs_noise=0.02, seed=13, sigma_V=0.02,
+        missing_rate=0.15, dropout_rate=0.30,
     )
 
 
@@ -152,7 +162,7 @@ def test_transient_data_partially_breaks_the_ridge(transient_panel,
                                                    equilibrium_panel):
     """Transients carry information the equilibrium does not (Chapter 6).
 
-    Joint (μ, α) scaling preserves the equilibrium but rescales the capital
+    Joint (μ, α) scaling preserves the equilibrium but rescales the enacted-scope
     timescale, so a transient-rich panel *does* discriminate along the ridge
     (measured flatness ≈ 1.14) while an equilibrium panel does not (≈ 0.002).
     This contrast is the executable version of the identification strategy in
@@ -177,3 +187,37 @@ def test_panel_loss_is_minimal_at_true_parameters(equilibrium_panel):
     p_wrong = make_params(mu=0.3)  # mu/alpha = 3 -> different equilibrium
     assert panel_loss(p_true, equilibrium_panel) < \
         panel_loss(p_wrong, equilibrium_panel)
+
+
+def test_panel_missingness_is_reproducible_and_preserves_baseline():
+    """Observation-process stress test keeps the IC and is seed-reproducible."""
+    kwargs = dict(
+        n_leaders=6, n_waves=8, obs_noise=0.01, sigma_V=0.01,
+        missing_rate=0.20, dropout_rate=0.40, seed=23,
+    )
+    first = synthesize_panel(make_params(), **kwargs)
+    second = synthesize_panel(make_params(), **kwargs)
+    assert np.array_equal(first["observed_mask"], second["observed_mask"])
+    assert np.all(first["observed_mask"][:, 0])
+    assert np.any(~first["observed_mask"][:, 1:])
+    assert np.array_equal(first["V_obs"], second["V_obs"], equal_nan=True)
+    assert np.array_equal(first["C_obs"], second["C_obs"], equal_nan=True)
+
+
+def test_reduced_fit_accepts_incomplete_panel(incomplete_panel):
+    """Finite-cell least squares remains usable under simplified attrition."""
+    fit = fit_reduced(
+        incomplete_panel,
+        make_params(mu=0.26, alpha=0.08),
+        free=("mu", "alpha"),
+    )
+    assert fit["success"]
+    assert np.isfinite(fit["loss"])
+    assert fit["ratio"] == pytest.approx(2.0, rel=0.20)
+
+
+@pytest.mark.parametrize("name", ["missing_rate", "dropout_rate"])
+def test_panel_rejects_invalid_missingness_rates(name):
+    """Invalid observation-process probabilities fail explicitly."""
+    with pytest.raises(ValueError, match=name):
+        synthesize_panel(make_params(), **{name: 1.0})
