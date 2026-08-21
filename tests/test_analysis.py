@@ -352,11 +352,16 @@ def test_basin_sweep_all_trajectories_converge_to_interior_equilibrium(basin_rep
     assert basin_report["non_converged"] == []
 
 
-def test_basin_sweep_legacy_target_key_matches_interior_equilibrium(basin_report):
-    """The deprecated compatibility key stores the interior equilibrium."""
-    V_target, C_target = basin_report["zombie_target"]
+def test_basin_sweep_reports_canonical_equilibrium_target(basin_report):
+    """R8: the canonical key names the equilibrium, not a retired label."""
+    V_target, C_target = basin_report["equilibrium_target"]
     assert V_target == pytest.approx(4.7025, abs=5e-3)
     assert C_target == pytest.approx(32.0337, abs=5e-3)
+
+
+def test_basin_sweep_legacy_target_key_mirrors_canonical_key(basin_report):
+    """The deprecated compatibility key holds the identical tuple."""
+    assert basin_report["zombie_target"] == basin_report["equilibrium_target"]
 
 
 def test_linear_drain_gamma1_yields_above_threshold_equilibrium():
@@ -667,6 +672,42 @@ def test_legacy_regime_classifier_emits_deprecation_warning():
     with pytest.deprecated_call(match="classify_equilibrium"):
         result = classify_regime(make_params())
     assert result == "zombie"
+
+
+def test_legacy_low_vitality_alias_emits_deprecation_warning():
+    """R8 M14: is_zombie() is a deprecated alias for is_low_vitality()."""
+    from dlvt.analysis import is_zombie
+
+    p = make_params()
+    V_star = find_interior_equilibria(p)[0]["V"]
+    expected = is_low_vitality(V_star, p)
+    with pytest.deprecated_call(match="is_low_vitality"):
+        legacy = is_zombie(V_star, p)
+    assert legacy is expected
+
+
+def test_regime_map_warns_once_per_call_not_once_per_cell():
+    """The deprecated grid API must warn on its own, like the other aliases.
+
+    ``regime_map`` previously had no ``warnings.warn`` of its own and leaned on
+    the warning inside ``classify_regime``, which fires inside the grid loop.
+    """
+    from dlvt.analysis import regime_map
+
+    betas = np.array([0.05, 0.10])
+    deltas = np.array([0.02, 0.05])
+    with pytest.warns(DeprecationWarning) as record:
+        regimes = regime_map(betas, deltas)
+    assert regimes.shape == (2, 2)
+    own = [w for w in record if "regime_map()" in str(w.message)]
+    assert len(own) == 1, f"expected exactly one regime_map warning, got {len(own)}"
+
+
+def test_classify_equilibrium_legacy_key_mirrors_canonical_key():
+    """A mapping key cannot warn on access, so pin the duplication instead."""
+    report = classify_equilibrium(make_params())
+    equilibrium = report["equilibrium"]
+    assert equilibrium["zombie"] is equilibrium["low_vitality"]
 
 
 def test_explicit_threshold_classification_separates_math_from_label():

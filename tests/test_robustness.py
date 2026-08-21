@@ -14,6 +14,8 @@ from scripts.robustness_grid import (
     hill_rhs,
     integrate_to_equilibrium,
     power_law_rhs,
+    saturating_complexity_rhs,
+    saturating_load_rhs,
     scope_absorption_breaks,
 )
 
@@ -81,3 +83,16 @@ def test_positive_point_alone_is_not_an_equilibrium():
         C_star=1.0,
     )
     assert not diagnostics["residual_ok"]
+
+
+def test_saturating_complexity_alias_warns_and_matches_load_kernel():
+    """R8: the only deprecated alias that used to redirect silently.
+
+    ``O`` is experienced coordination load, not organizational complexity, so
+    the retired spelling must announce itself like every other alias.
+    """
+    p = make_params()
+    with pytest.deprecated_call(match="saturating_load_rhs"):
+        legacy = saturating_complexity_rhs(p, K=50.0)
+    canonical = saturating_load_rhs(p, K=50.0)
+    assert legacy(0.0, [8.0, 5.0]) == canonical(0.0, [8.0, 5.0])

@@ -20,8 +20,8 @@ def extract(path: Path, pattern: str, label: str) -> str:
 
 
 def main() -> int:
-    """Compare the public version declarations (three in the standalone
-    export; four in the monorepo, where a root CITATION.cff mirror exists).
+    """Compare the public version declarations (four in the standalone
+    export; five in the monorepo, where a root CITATION.cff mirror exists).
     """
     versions = {
         "pyproject.toml": extract(
@@ -34,6 +34,12 @@ def main() -> int:
         ),
         "CITATION.cff": extract(
             ROOT / "CITATION.cff", r"^version:\s*([^\s#]+)", "citation"
+        ),
+        # The README ships as the package long description on PyPI and carries
+        # the version inside its worked citation example. Nothing else pinned
+        # that literal, so it could drift silently behind the metadata.
+        "README.md": extract(
+            ROOT / "README.md", r"\(Version\s+([^\s)]+)\)", "readme citation"
         ),
     }
     # The monorepo keeps a root-level mirror of the citation metadata; the

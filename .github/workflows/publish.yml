@@ -1,0 +1,127 @@
+name: Publish to PyPI
+
+# NOTE (monorepo): GitHub Actions only executes workflows under the
+# repository-root .github/, so this file is DORMANT inside the monorepo.
+# It ships with the public export (see PUBLIC_EXPORT_ALLOWLIST.txt) and runs
+# in the standalone dlvt repository.
+#
+# It lives here, inside the exported surface, on purpose. An earlier
+# publish workflow existed only in the public repository, outside the
+# allowlist, and the next export sync deleted it — which is why PyPI stayed
+# frozen at 2.0.2 while development continued to 2.2.0rc2. Anything the
+# public repository must keep across a sync has to be an exported file.
+#
+# Uploads are irreversible and a version number can never be reused, so the
+# build job runs the full gate battery and the upload happens only from the
+# artifact those gates accepted.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Index to publish to"
+        required: true
+        default: testpypi
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Materialize reviewed public surface
+        shell: bash
+        run: |
+          export_root="${RUNNER_TEMP}/dlvt-public-publish"
+          python scripts/check_public_export.py --export-dir "$export_root"
+          python "$export_root/scripts/check_public_export.py" --check-tree "$export_root"
+          echo "EXPORT_ROOT=$export_root" >> "$GITHUB_ENV"
+      - name: Require the release tag to match the declared version
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cd "$EXPORT_ROOT"
+          version=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$TAG" != "v${version}" ]; then
+            echo "release tag '$TAG' does not match declared version '$version' (expected 'v${version}')" >&2
+            exit 1
+          fi
+          echo "tag $TAG matches declared version $version"
+      - name: Build wheel and source distribution from export
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          python -m pip install --upgrade pip "build==1.2.2.post1" twine
+          python -m build
+      - name: Inspect archives, metadata, and versions
+        shell: bash
+        run: |
+          cd "$EXPORT_ROOT"
+          wheel=$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit)
+          sdist=$(find dist -maxdepth 1 -type f -name '*.tar.gz' -print -quit)
+          test -n "$wheel"
+          test -n "$sdist"
+          python scripts/check_distribution.py --wheel "$wheel" --sdist "$sdist"
+          python scripts/check_version_sync.py
+          python -m twine check dist/*
+          echo "WHEEL=$EXPORT_ROOT/$wheel" >> "$GITHUB_ENV"
+          echo "SDIST=$EXPORT_ROOT/$sdist" >> "$GITHUB_ENV"
+      - name: Install and smoke-test wheel
+        shell: bash
+        run: |
+          python -m venv "${RUNNER_TEMP}/dlvt-wheel-smoke"
+          "${RUNNER_TEMP}/dlvt-wheel-smoke/bin/python" -m pip install "$WHEEL"
+          cd "$RUNNER_TEMP"
+          "${RUNNER_TEMP}/dlvt-wheel-smoke/bin/python" \
+            "$EXPORT_ROOT/scripts/installed_smoke.py"
+      - name: Install and smoke-test source distribution
+        shell: bash
+        run: |
+          python -m venv "${RUNNER_TEMP}/dlvt-sdist-smoke"
+          "${RUNNER_TEMP}/dlvt-sdist-smoke/bin/python" -m pip install "$SDIST"
+          cd "$RUNNER_TEMP"
+          "${RUNNER_TEMP}/dlvt-sdist-smoke/bin/python" \
+            "$EXPORT_ROOT/scripts/installed_smoke.py"
+      - name: Upload the verified distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dlvt-dist
+          path: ${{ env.EXPORT_ROOT }}/dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to ${{ (github.event_name == 'release' || inputs.target == 'pypi') && 'PyPI' || 'TestPyPI' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ (github.event_name == 'release' || inputs.target == 'pypi') && 'pypi' || 'testpypi' }}
+      url: ${{ (github.event_name == 'release' || inputs.target == 'pypi') && 'https://pypi.org/p/dlvt' || 'https://test.pypi.org/p/dlvt' }}
+    permissions:
+      # Trusted publishing: OIDC only, no API token is stored anywhere.
+      id-token: write
+    steps:
+      - name: Download the verified distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dlvt-dist
+          path: dist
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ (github.event_name == 'release' || inputs.target == 'pypi') && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+          print-hash: true

@@ -1,6 +1,7 @@
 # Explicit files permitted in the standalone public-code export.
 .gitignore
 .github/workflows/ci.yml
+.github/workflows/publish.yml
 CHANGELOG.md
 CITATION.cff
 CONTRIBUTING.md

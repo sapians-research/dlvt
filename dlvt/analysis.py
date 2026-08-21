@@ -457,6 +457,14 @@ def classify_equilibrium(
     is a reporting window only: it never changes mathematical existence. If
     it excludes the exact equilibrium, the result retains that equilibrium
     and uses status ``equilibrium-outside-reporting-window``.
+
+    Notes
+    -----
+    ``result['equilibrium']`` carries the canonical boolean under the key
+    ``low_vitality``.  It also carries ``zombie``, a deprecated compatibility
+    key holding the identical value; a mapping key cannot emit a
+    ``DeprecationWarning`` on access, so it is documented here instead. Read
+    ``low_vitality``; ``zombie`` is scheduled for removal in 3.0.0.
     """
     if not 0.0 < threshold_fraction < 1.0:
         raise ValueError("threshold_fraction must lie strictly between 0 and 1.")
@@ -545,6 +553,24 @@ def classify_regime(
         DeprecationWarning,
         stacklevel=2,
     )
+    return _classify_regime_compat(
+        p,
+        C_max=C_max,
+        threshold_fraction=threshold_fraction,
+    )
+
+
+def _classify_regime_compat(
+    p: Dict[str, float],
+    C_max: Optional[float] = None,
+    threshold_fraction: float = DISPLAY_THRESHOLD_FRACTION,
+) -> str:
+    """Return the legacy label without emitting a deprecation warning.
+
+    Internal helper so grid callers such as :func:`regime_map` warn once per
+    call instead of once per grid cell.  Mirrors the pattern already used by
+    ``dlvt.nondimensional._classify_point_compat``.
+    """
     result = classify_equilibrium(
         p,
         C_max=C_max,
@@ -595,6 +621,12 @@ def regime_map(beta_range: np.ndarray, delta_range: np.ndarray,
     >>> deltas = np.linspace(0.001, 0.1, 50)
     >>> regimes = regime_map(betas, deltas)
     """
+    warnings.warn(
+        "regime_map() is deprecated; build maps from continuous "
+        "classify_equilibrium() outputs plus an explicit display threshold.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if base_params is None:
         base_params = DEFAULT_PARAMS.copy()
     base_params = validate_params(base_params)
@@ -603,7 +635,7 @@ def regime_map(beta_range: np.ndarray, delta_range: np.ndarray,
     for i, dv in enumerate(delta_range):
         for j, bv in enumerate(beta_range):
             p = {**base_params, 'beta': bv, 'delta': dv}
-            regimes[i, j] = classify_regime(p)
+            regimes[i, j] = _classify_regime_compat(p)
     return regimes
 
 
@@ -1192,8 +1224,11 @@ def basin_of_attraction_sweep(
     -------
     Dict[str, any]
         Keys:
-        - ``zombie_target`` : deprecated compatibility key for the
-          equilibrium-target tuple
+        - ``equilibrium_target`` : ``(V*, C*)`` tuple the sweep tests
+          convergence against
+        - ``zombie_target`` : deprecated compatibility alias holding the
+          identical tuple; read ``equilibrium_target`` instead. Scheduled
+          for removal in 3.0.0.
         - ``n_total`` : int
         - ``n_converged`` : int
         - ``max_final_error`` : float, max component-wise error at t=T
@@ -1245,7 +1280,8 @@ def basin_of_attraction_sweep(
         f"{'All trajectories converge (numerical corroboration of Theorem 2).' if n_conv == n_total else 'NON-CONVERGENT trajectories detected — investigate.'}"
     )
     return {
-        'zombie_target': target,  # deprecated compatibility key through v2.x
+        'equilibrium_target': target,
+        'zombie_target': target,  # deprecated alias; removal scheduled for 3.0.0
         'n_total': n_total,
         'n_converged': n_conv,
         'max_final_error': max_err,

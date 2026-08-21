@@ -1,10 +1,11 @@
 # dlvt — Dynamic Leadership Vitality Theory (research code)
 
 [![CI](https://github.com/wbendinelli/dlvt/actions/workflows/ci.yml/badge.svg)](https://github.com/wbendinelli/dlvt/actions/workflows/ci.yml)
-[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/dlvt.svg)](https://pypi.org/project/dlvt/)
+[![Python 3.10–3.13](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue.svg)](https://github.com/wbendinelli/dlvt/blob/main/pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/wbendinelli/dlvt/blob/main/LICENSE)
 [![Preprint](https://img.shields.io/badge/preprint-SSRN%206455001-b31b1b.svg)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6455001)
-[![Cite](https://img.shields.io/badge/cite-CITATION.cff-lightgrey.svg)](CITATION.cff)
+[![Cite](https://img.shields.io/badge/cite-CITATION.cff-lightgrey.svg)](https://github.com/wbendinelli/dlvt/blob/main/CITATION.cff)
 
 Executable model, tests, and reproducible numerical experiments for
 **Dynamic Leadership Vitality Theory (DLVT)** — a formal, conditional theory
@@ -22,8 +23,8 @@ used to classify, rank, or make decisions about individual people.
 [Quick start](#canonical-quick-start) ·
 [What the implementation establishes](#what-the-implementation-establishes) ·
 [Canonical API](#canonical-api) · [Tests](#tests) ·
-[Cite](#cite) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) ·
-[Contributing](CONTRIBUTING.md)
+[Cite](#cite) · [Security](https://github.com/wbendinelli/dlvt/blob/main/SECURITY.md) · [Changelog](https://github.com/wbendinelli/dlvt/blob/main/CHANGELOG.md) ·
+[Contributing](https://github.com/wbendinelli/dlvt/blob/main/CONTRIBUTING.md)
 
 This tree is the reviewed public export of a private research monorepo:
 every file here is allowlisted, hash-verified
@@ -56,13 +57,11 @@ and the model time unit is not mapped to days, months, or years.
 
 ## Install
 
-From this directory:
-
 ```bash
-python -m pip install -e .
+python -m pip install dlvt
 ```
 
-For development:
+From a clone of this repository, for development:
 
 ```bash
 python -m pip install -e '.[dev]'
@@ -177,18 +176,35 @@ Experimental modules:
 ## Deprecated compatibility names
 
 The following names encode historical semantics and should not be used in new
-work:
+work. Every one emits a `DeprecationWarning`.
+
+Direct replacements:
 
 - `complexity()` → use `coordination_load()`;
 - `carrying_capacity()` → use `drain_coefficient_threshold()`;
+- `trapping_capital_bound()` → use `trapping_scope_bound()`;
 - `is_zombie()` → use `is_low_vitality()` with an explicit threshold;
 - `classify_regime()` → use `classify_equilibrium()`;
-- `slow_manifold()` → use `quasi_static_nullcline()`.
-- `trapping_capital_bound()` → use `trapping_scope_bound()`.
+- `classify_point()` (`nondimensional`) → use `classify_equilibrium()`;
+- `slow_manifold()` (`fastslow`) → use `quasi_static_nullcline()`;
+- `sobol_indices(output='regime')` → use `output='low_vitality'`.
 
-Compatibility names emit `DeprecationWarning` where implemented and are
-retained for the planned 2.2 compatibility release, then scheduled for
-removal in 3.0.0. See `CHANGELOG.md` for the migration decision.
+Deprecated with no direct replacement — build the map or screen from
+continuous `classify_equilibrium()` outputs plus an explicit display
+threshold:
+
+- `regime_map()`;
+- `zombie_boundary_map()`, `zombie_boundary_map_beta()`, and
+  `lhs_zombie_fraction()` (`nondimensional`).
+
+Two deprecated **mapping keys** survive beside their canonical twins, because
+a dict key cannot warn on access:
+`classify_equilibrium(...)["equilibrium"]["zombie"]` duplicates
+`["low_vitality"]`, and `basin_of_attraction_sweep(...)["zombie_target"]`
+duplicates `["equilibrium_target"]`.
+
+Compatibility names are retained for the whole 2.2 line and are removed in
+3.0.0. See `CHANGELOG.md` for the migration decision.
 
 ## Tests
 
@@ -259,12 +275,12 @@ classify people.
 
 ## Cite
 
-Citation metadata live in [`CITATION.cff`](CITATION.cff) (GitHub's "Cite
+Citation metadata live in [`CITATION.cff`](https://github.com/wbendinelli/dlvt/blob/main/CITATION.cff) (GitHub's "Cite
 this repository" uses it). Until an archival DOI is minted, cite the
 software version or commit used, for example:
 
 > Bendinelli, W. (2026). *dlvt: Dynamic Leadership Vitality Theory research
-> code* (Version 2.2.0rc2) [Computer software].
+> code* (Version 2.2.0) [Computer software].
 > https://github.com/wbendinelli/dlvt
 
 The theory paper is available as an SSRN preprint (abstract id 6455001);
@@ -272,13 +288,13 @@ the manuscript remains in preparation for journal submission.
 
 ## Security
 
-See [`SECURITY.md`](SECURITY.md) for the supported-version table and how to
+See [`SECURITY.md`](https://github.com/wbendinelli/dlvt/blob/main/SECURITY.md) for the supported-version table and how to
 report a vulnerability. Dependency locks are kept current against
 Dependabot advisories.
 
 ## License and citation status
 
-The package is MIT licensed ([`LICENSE`](LICENSE)). A stable archival DOI
+The package is MIT licensed ([`LICENSE`](https://github.com/wbendinelli/dlvt/blob/main/LICENSE)). A stable archival DOI
 will be added only after the manuscript and public export pass the release
 gates. Until then, cite the repository version/commit used in an analysis
 and describe the manuscript as in preparation.
