@@ -148,3 +148,25 @@ def test_determinism_same_seed():
     assert np.array_equal(r1['S1'], r2['S1'])
     assert np.array_equal(r1['ST'], r2['ST'])
     assert r1['retained_fraction'] == r2['retained_fraction']
+
+
+def test_deprecated_regime_output_aliases_low_vitality():
+    """R8 M14: output='regime' warns and is rewritten to 'low_vitality'.
+
+    The retired label is not a separate analysis: the deprecated spelling must
+    reproduce the canonical run exactly, seed for seed.
+    """
+    kwargs = dict(n_base=32, seed=SEED, factor=1.5)
+    canonical = sobol_indices(make_params(), output='low_vitality', **kwargs)
+    with pytest.deprecated_call(match="low_vitality"):
+        legacy = sobol_indices(make_params(), output='regime', **kwargs)
+
+    assert legacy['output'] == 'low_vitality'
+    for key in ('S1', 'ST'):
+        np.testing.assert_allclose(legacy[key], canonical[key], rtol=0, atol=0)
+
+
+def test_unknown_output_is_rejected():
+    """An unrecognised output must not silently fall through to a default."""
+    with pytest.raises(ValueError, match="unknown output"):
+        sobol_indices(make_params(), n_base=16, seed=SEED, output='zombie')

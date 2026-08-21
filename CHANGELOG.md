@@ -1,5 +1,48 @@
 # Changelog
 
+## 2.2.0 (2026-08-21)
+
+Promotes the 2.2.0rc1 contract and the 2.2.0rc2 maintenance work to a final
+release. No model, equation, parameter, or contract change relative to
+2.2.0rc2; the canonical API surface is unchanged.
+
+This is the first release of the 2.2 line published to PyPI. Versions 2.0.1
+and 2.0.2 on PyPI predate the R8 construct decision and present retired
+terminology as current; do not read claim semantics from them.
+
+### Added
+
+- `basin_of_attraction_sweep()` now returns `equilibrium_target`, the
+  canonical name for the `(V*, C*)` tuple the sweep tests convergence
+  against. The former sole key `zombie_target` is retained as a deprecated
+  alias holding the identical value.
+- Deprecation coverage for `is_zombie()`, `regime_map()`,
+  Sobol `output='regime'`, and `saturating_complexity_rhs()`, none of which
+  had tests.
+
+### Changed
+
+- `regime_map()` emits its own `DeprecationWarning` once per call. It
+  previously relied on the warning inside `classify_regime()`, which fires
+  from inside the grid loop.
+- `saturating_complexity_rhs()` emits a `DeprecationWarning`; it previously
+  redirected silently.
+- `check_version_sync.py` also pins the version literal in `README.md`. The
+  README is the package long description on PyPI and nothing pinned that
+  literal before.
+- README and QUICKSTART install instructions lead with `pip install dlvt`,
+  and README links are absolute so they resolve on the PyPI project page.
+- The deprecated-name lists in `README.md` and `dlvt/__init__.py` now cover
+  the full set rather than a subset of it.
+
+### Release gates
+
+2.2.0rc1 recorded repository publication, hosted CI, tag, and DOI as release
+gates. Publication, CI, and tag are closed. **The archival DOI is explicitly
+decoupled from this release**: it is minted against an archival deposit
+rather than a package upload, and it remains open work (`EVOLUTION.md` E2).
+Citation metadata continue to state that no archival DOI exists yet.
+
 ## 2.2.0rc2 (2026-08-02)
 
 Security and platform maintenance release; no model, API, or contract

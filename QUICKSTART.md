@@ -2,7 +2,13 @@
 
 ## 1. Install
 
-From `code/`:
+```bash
+python -m pip install dlvt
+```
+
+To work from a checkout instead, run this from the directory that holds
+`pyproject.toml` — the repository root in the standalone `dlvt` repository,
+`code/` in the research monorepo:
 
 ```bash
 python -m pip install -e .

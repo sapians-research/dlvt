@@ -41,6 +41,7 @@ import argparse
 import csv
 import io
 import sys
+import warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
@@ -210,7 +211,17 @@ def saturating_load_rhs(p: Dict[str, float], K: float = 50.0) -> Callable:
 
 
 def saturating_complexity_rhs(p: Dict[str, float], K: float = 50.0) -> Callable:
-    """Deprecated compatibility alias for :func:`saturating_load_rhs`."""
+    """Deprecated compatibility alias for :func:`saturating_load_rhs`.
+
+    ``O`` denotes experienced coordination load, not organizational
+    complexity.  Scheduled for removal in 3.0.0.
+    """
+    warnings.warn(
+        "saturating_complexity_rhs() is deprecated; use saturating_load_rhs(). "
+        "O denotes experienced coordination load, not organizational complexity.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return saturating_load_rhs(p, K=K)
 
 

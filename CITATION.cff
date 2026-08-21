@@ -4,8 +4,8 @@ message: >-
   The manuscript remains in preparation and has no archival DOI yet.
 title: DLVT research code
 type: software
-version: 2.2.0rc2
-date-released: 2026-08-02
+version: 2.2.0
+date-released: 2026-08-21
 authors:
   - family-names: Bendinelli
     given-names: William
