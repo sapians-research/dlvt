@@ -1,0 +1,4 @@
+# Declaração de tier do golden path SAPIANS.
+class: Library
+tier: C
+description: Pacote Python que implementa a Dynamic Leadership Vitality Theory — modelo de sistemas dinâmicos de sustentabilidade executiva (vitalidade × capital, equilíbrios, regimes de liderança).
