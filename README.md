@@ -275,7 +275,24 @@ The current implementation does not provide:
 Use the code to reproduce and challenge the formal model. Do not use it to
 classify people.
 
-## Cite
+## Citation
+
+If you use this code, cite the software version you used. The manuscript is in
+preparation and has no archival DOI yet.
+
+```bibtex
+@software{bendinelli_dlvt_code_2026,
+  title   = {DLVT research code},
+  author  = {Bendinelli, William},
+  year    = {2026},
+  version = {2.2.0},
+  url     = {https://github.com/wbendinelli/dlvt},
+  license = {MIT},
+  note    = {SAPIANS Est\'udio de Solu\c{c}\~oes em Neg\'ocios Ltda.
+             Reference implementation of Dynamic Leadership Vitality Theory.}
+}
+```
+
 
 Citation metadata live in [`CITATION.cff`](https://github.com/wbendinelli/dlvt/blob/main/CITATION.cff) (GitHub's "Cite
 this repository" uses it). Until an archival DOI is minted, cite the
