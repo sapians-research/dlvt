@@ -9,6 +9,7 @@ date-released: 2026-08-21
 authors:
   - family-names: Bendinelli
     given-names: William
+    affiliation: "SAPIANS Estúdio de Soluções em Negócios Ltda"
 repository-code: https://github.com/wbendinelli/dlvt
 url: https://github.com/wbendinelli/dlvt
 license: MIT
