@@ -7,7 +7,7 @@
 [![Preprint](https://img.shields.io/badge/preprint-SSRN%206455001-b31b1b.svg)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6455001)
 [![Cite](https://img.shields.io/badge/cite-CITATION.cff-lightgrey.svg)](https://github.com/wbendinelli/dlvt/blob/main/CITATION.cff)
 
-> **Tier:** `C` · **Classe:** `Library`
+> **Tier:** `C` · **Classe:** `Research`
 
 Executable model, tests, and reproducible numerical experiments for
 **Dynamic Leadership Vitality Theory (DLVT)** — a formal, conditional theory
