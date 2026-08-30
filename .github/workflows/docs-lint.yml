@@ -1,0 +1,20 @@
+name: Docs lint
+
+# Gate de documentação (ADR-0015). Verifica o README contra o perfil declarado
+# em .sapians-repo.yml. Violação nova bloqueia; dívida existente é congelada em
+# .sapians-doclint-baseline.json e só pode encolher.
+on:
+  push:
+    branches: [main]
+    paths: ["README.md", ".sapians-repo.yml", ".sapians-doclint-baseline.json"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    uses: wbendinelli/.github/.github/workflows/docs-lint.yml@v0.4.1
+    with:
+      config-ref: v0.4.1
