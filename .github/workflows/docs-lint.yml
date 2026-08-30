@@ -15,6 +15,6 @@ permissions:
 
 jobs:
   docs:
-    uses: wbendinelli/.github/.github/workflows/docs-lint.yml@v0.4.1
+    uses: wbendinelli/.github/.github/workflows/docs-lint.yml@v0.5.0
     with:
       config-ref: v0.4.1
